@@ -26,13 +26,16 @@ macro_rules! build_translations {
         src.push_str("macro_rules! t {\n");
         for (key, translations) in map {
             let key = key.to_snake_case().replace(".", "__");
-            src.push_str(&format!("({} => $lang:expr) => {{\nmatch $lang {{\n", key));
+            src.push_str(&format!(
+                "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n", key,
+            ));
             for (lang, text) in translations {
+                let text = text.expect("all values are provided");
                 let lang = lang.to_camel_case();
                 src.push_str(&format!(
-                    "Lang::{} => {:?},\n",
+                    "Lang::{} => format!({:?} $(, $fmt_args)*),\n",
                     lang,
-                    text.expect("all values are provided"),
+                    text,
                 ));
                 all_languages.insert(lang);
             }
