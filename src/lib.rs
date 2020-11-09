@@ -27,6 +27,7 @@ macro_rules! build_translations {
         let re_printf = $crate::regex::Regex::new(
             r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|.+"
         ).unwrap();
+        let re_lang = $crate::regex::Regex::new(r"(\w+)(-(\w+))?").unwrap();
         let mut src = String::new();
         let mut all_languages = HashSet::new();
         src.push_str("macro_rules! t {\n");
@@ -35,6 +36,7 @@ macro_rules! build_translations {
             src.push_str(&format!(
                 "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n", key,
             ));
+            let mut match_arms = Vec::new();
             for (lang, text) in translations {
                 let text = text.expect("all values are provided");
                 let mut out = String::new();
@@ -59,14 +61,26 @@ macro_rules! build_translations {
                         out.push_str(&caps[0]);
                     }
                 }
-                let lang = lang.to_camel_case();
-                src.push_str(&format!(
-                    "Lang::{} => format!({:?} $(, $fmt_args)*),\n",
+                let caps = re_lang.captures(lang.as_str()).expect("lang can be parsed");
+                let lang = caps
+                    .get(1)
+                    .expect("the language is always there")
+                    .as_str()
+                    .to_camel_case();
+                let region = caps
+                    .get(3)
+                    .map(|x| format!("{:?}", x.as_str()));
+                let no_region = "_".to_string();
+                match_arms.push((format!(
+                    "Lang::{}({}) => format!({:?} $(, $fmt_args)*),\n",
                     lang,
+                    region.as_ref().unwrap_or(&no_region),
                     out,
-                ));
+                ), region.is_some()));
                 all_languages.insert(lang);
             }
+            match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+            src.extend(match_arms.iter().map(|(match_arm, _)| match_arm.as_str()));
             src.push_str("}};\n")
         }
         src.push_str("}
@@ -74,7 +88,7 @@ macro_rules! build_translations {
 #[allow(dead_code)]
 enum Lang {\n");
         for lang in all_languages {
-            src.push_str(&format!("{},\n", lang));
+            src.push_str(&format!("{}(&'static str),\n", lang));
         }
         src.push_str("}\n");
 
