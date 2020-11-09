@@ -2,6 +2,8 @@
 pub use configparser;
 #[doc(hidden)]
 pub use heck;
+#[doc(hidden)]
+pub use regex;
 
 #[macro_export]
 macro_rules! build_translations {
@@ -21,6 +23,10 @@ macro_rules! build_translations {
         println!("cargo:rerun-if-changed={}", $ini_files);
         )+
 
+        // NOTE: # cannot be used in the INI because it is considered as comment
+        let re_printf = $crate::regex::Regex::new(
+            r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|.+"
+        ).unwrap();
         let mut src = String::new();
         let mut all_languages = HashSet::new();
         src.push_str("macro_rules! t {\n");
@@ -31,11 +37,33 @@ macro_rules! build_translations {
             ));
             for (lang, text) in translations {
                 let text = text.expect("all values are provided");
+                let mut out = String::new();
+                for caps in re_printf.captures_iter(text.as_str()) {
+                    if let Some(type_) = caps.get(4) {
+                        out.push_str("{:");
+                        if let Some(flag) = caps.get(1) {
+                            out.push_str(flag.as_str());
+                        }
+                        if let Some(width) = caps.get(2) {
+                            out.push_str(width.as_str());
+                        }
+                        if let Some(precision) = caps.get(3) {
+                            out.push_str(precision.as_str());
+                        }
+                        match type_.as_str() {
+                            x @ "x" | x @ "X" => out.push_str(x),
+                            _ => {},
+                        }
+                        out.push_str("}");
+                    } else {
+                        out.push_str(&caps[0]);
+                    }
+                }
                 let lang = lang.to_camel_case();
                 src.push_str(&format!(
                     "Lang::{} => format!({:?} $(, $fmt_args)*),\n",
                     lang,
-                    text,
+                    out,
                 ));
                 all_languages.insert(lang);
             }
