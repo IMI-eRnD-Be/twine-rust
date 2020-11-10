@@ -32,9 +32,15 @@
 //! [band_the_jackson_5]
 //!     en = The Jackson 5
 //!     fr = Les 5 fils de Jack
+//! [format_string]
+//!     en = %s, %@!
+//!     fr = %s, %@ !
 //! [format_percentage]
 //!     en = %.0f%
 //!     fr = %.0f %
+//! [format_hexadecimal]
+//!     en = %x
+//!     fr = %#X
 //! ```
 //!
 //! Now in your project you can use the macro `t!` to translate anything:
@@ -77,11 +83,14 @@
 //! You can choose between one of them if you use this work.
 
 #[doc(hidden)]
-pub use configparser;
-#[doc(hidden)]
 pub use heck;
 #[doc(hidden)]
 pub use regex;
+
+use std::collections::HashMap;
+use std::fs;
+use std::io;
+use std::path::Path;
 
 #[macro_export]
 macro_rules! build_translations {
@@ -92,9 +101,8 @@ macro_rules! build_translations {
 
         // regex that tries to parse printf's format placeholders
         // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
-        // TODO: # cannot be used in the INI because it is considered as comment
         let re_printf = $crate::regex::Regex::new(
-            r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|.+"
+            r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$"
         ).unwrap();
         let re_lang = $crate::regex::Regex::new(r"(\w+)(-(\w+))?").unwrap();
 
@@ -105,13 +113,12 @@ macro_rules! build_translations {
 
         // generate match arms for each language (for a given translation key)
         let generate_match_arms = |
-            translations: HashMap<String, Option<String>>,
+            translations: HashMap<String, String>,
             all_languages: &mut HashSet<String>,
         | {
             let mut match_arms = Vec::new();
             for (lang, text) in translations {
                 // transform all printf's format placeholder to Rust's format
-                let text = text.expect("all values are provided");
                 let mut out = String::new();
                 for caps in re_printf.captures_iter(text.as_str()) {
                     if let Some(type_) = caps.get(4) {
@@ -130,6 +137,8 @@ macro_rules! build_translations {
                             _ => {},
                         }
                         out.push_str("}");
+                    } else if &caps[0] == "%%" {
+                        out.push_str("%");
                     } else {
                         out.push_str(&caps[0]);
                     }
@@ -163,9 +172,9 @@ macro_rules! build_translations {
 
         // read all the INI files (might override existing keys)
         $(
-        let mut config = $crate::configparser::ini::Ini::new();
-        match config.load($ini_files) {
-            Err(err) => panic!("{}", err),
+        let file_path = $ini_files;
+        match $crate::read_twine_ini(file_path) {
+            Err(err) => panic!("could not read Twine INI file `{}`: {}", file_path, err),
             Ok(other_map) => map.extend(other_map),
         }
         println!("cargo:rerun-if-changed={}", $ini_files);
@@ -201,4 +210,35 @@ enum Lang {\n");
         let _ = std::fs::create_dir_all(dest_path.parent().unwrap());
         std::fs::write(&dest_path, src).unwrap();
     }};
+}
+
+pub fn read_twine_ini<P: AsRef<Path>>(
+    path: P,
+) -> io::Result<HashMap<String, HashMap<String, String>>> {
+    use std::io::BufRead;
+
+    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
+    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
+
+    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut section = map.entry("".to_owned()).or_default();
+
+    let file = fs::File::open(path)?;
+    let reader = io::BufReader::new(file);
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(caps) = re_section.captures(line.as_str()) {
+            section = map
+                .entry(caps.get(1).unwrap().as_str().to_owned())
+                .or_default();
+        }
+        if let Some(caps) = re_key_value.captures(line.as_str()) {
+            section.insert(
+                caps.get(1).unwrap().as_str().to_owned(),
+                caps.get(2).unwrap().as_str().to_owned(),
+            );
+        }
+    }
+
+    Ok(map)
 }

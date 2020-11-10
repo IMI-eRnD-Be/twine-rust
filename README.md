@@ -34,9 +34,15 @@ You need an INI file with your translations. Example with `translations.ini`:
 [band_the_jackson_5]
     en = The Jackson 5
     fr = Les 5 fils de Jack
+[format_string]
+    en = %s, %@!
+    fr = %s, %@ !
 [format_percentage]
     en = %.0f%
     fr = %.0f %
+[format_hexadecimal]
+    en = %x
+    fr = %#X
 ```
 
 Now in your project you can use the macro `t!` to translate anything:
