@@ -90,30 +90,24 @@ macro_rules! build_translations {
         use ::std::path::Path;
         use $crate::heck::{CamelCase, SnakeCase};
 
-        let mut map = HashMap::new();
-
-        $(
-        let mut config = $crate::configparser::ini::Ini::new();
-        match config.load($ini_files) {
-            Err(err) => panic!("{}", err),
-            Ok(other_map) => map.extend(other_map),
-        }
-        println!("cargo:rerun-if-changed={}", $ini_files);
-        )+
-
-        // NOTE: # cannot be used in the INI because it is considered as comment
+        // regex that tries to parse printf's format placeholders
+        // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
+        // TODO: # cannot be used in the INI because it is considered as comment
         let re_printf = $crate::regex::Regex::new(
             r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|.+"
         ).unwrap();
         let re_lang = $crate::regex::Regex::new(r"(\w+)(-(\w+))?").unwrap();
-        let mut src = String::new();
-        let mut all_languages = HashSet::new();
-        src.push_str("macro_rules! t {\n");
-        for (key, translations) in map {
-            let key = key.to_snake_case().replace(".", "__");
-            src.push_str(&format!(
-                "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n", key,
-            ));
+
+        // turns all the keys into snake case automatically
+        let normalize_key = |key: &str| {
+            key.to_snake_case().replace(".", "__")
+        };
+
+        // generate match arms for each language (for a given translation key)
+        let generate_match_arms = |
+            translations: HashMap<String, Option<String>>,
+            all_languages: &mut HashSet<String>,
+        | {
             let mut match_arms = Vec::new();
             for (lang, text) in translations {
                 let text = text.expect("all values are provided");
@@ -158,6 +152,31 @@ macro_rules! build_translations {
                 all_languages.insert(lang);
             }
             match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+            match_arms
+        };
+
+        let mut map = HashMap::new();
+
+        $(
+        let mut config = $crate::configparser::ini::Ini::new();
+        match config.load($ini_files) {
+            Err(err) => panic!("{}", err),
+            Ok(other_map) => map.extend(other_map),
+        }
+        println!("cargo:rerun-if-changed={}", $ini_files);
+        )+
+
+        let mut src = String::new();
+        let mut all_languages = HashSet::new();
+        src.push_str("macro_rules! t {\n");
+        for (key, translations) in map {
+            let key = normalize_key(key.as_str());
+            src.push_str(&format!(
+                "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n", key,
+            ));
+
+            let match_arms = generate_match_arms(translations, &mut all_languages);
+
             src.extend(match_arms.iter().map(|(match_arm, _)| match_arm.as_str()));
             src.push_str("}};\n")
         }
