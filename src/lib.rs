@@ -1,3 +1,9 @@
+//! ![Rust](https://github.com/IMI-eRnD-Be/twine/workflows/Rust/badge.svg)
+//! [![Latest Version](https://img.shields.io/crates/v/twine.svg)](https://crates.io/crates/twine)
+//! [![Docs.rs](https://docs.rs/twine/badge.svg)](https://docs.rs/twine)
+//! [![LOC](https://tokei.rs/b1/github/IMI-eRnD-Be/twine)](https://github.com/IMI-eRnD-Be/twine)
+//! [![Dependency Status](https://deps.rs/repo/github/IMI-eRnD-Be/twine/status.svg)](https://deps.rs/repo/github/IMI-eRnD-Be/twine)
+//!
 //! Library for internationalization using the Twine file format.
 //!
 //! # Usage
