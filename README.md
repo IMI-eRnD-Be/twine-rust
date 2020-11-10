@@ -42,14 +42,19 @@ You need an INI file with your translations. Example with `translations.ini`:
 Now in your project you can use the macro `t!` to translate anything:
 
 ```rust
-// use "" if there is no localization
-let lang = Lang::Fr("be");
+// you need to include the generated file somewhere
+include!(concat!(env!("OUT_DIR"), "/i18n.rs"));
 
-// will output "Ruiner le nom d'un groupe en le traduisant en français"
-t!(app_ruin_the_band => lang);
+fn main() {
+    // use "" if there is no localization
+    let lang = Lang::Fr("be");
 
-// using formatted arguments, this will output "73 %"
-t!(format_percentage, 73.02f32 => lang)
+    // will output "Ruiner le nom d'un groupe en le traduisant en français"
+    t!(app_ruin_the_band => lang);
+
+    // using formatted arguments, this will output "73 %"
+    t!(format_percentage, 73.02f32 => lang);
+}
 ```
 
 ## Implementation Notes
