@@ -110,6 +110,7 @@ macro_rules! build_translations {
         | {
             let mut match_arms = Vec::new();
             for (lang, text) in translations {
+                // transform all printf's format placeholder to Rust's format
                 let text = text.expect("all values are provided");
                 let mut out = String::new();
                 for caps in re_printf.captures_iter(text.as_str()) {
@@ -133,6 +134,8 @@ macro_rules! build_translations {
                         out.push_str(&caps[0]);
                     }
                 }
+
+                // parse the language and region, then push the match arm
                 let caps = re_lang.captures(lang.as_str()).expect("lang can be parsed");
                 let lang = caps
                     .get(1)
@@ -152,11 +155,13 @@ macro_rules! build_translations {
                 all_languages.insert(lang);
             }
             match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+
             match_arms
         };
 
         let mut map = HashMap::new();
 
+        // read all the INI files (might override existing keys)
         $(
         let mut config = $crate::configparser::ini::Ini::new();
         match config.load($ini_files) {
@@ -180,8 +185,10 @@ macro_rules! build_translations {
             src.extend(match_arms.iter().map(|(match_arm, _)| match_arm.as_str()));
             src.push_str("}};\n")
         }
-        src.push_str("}
-#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+        src.push_str("}\n");
+
+        // generate the `Lang` enum and its variants
+        src.push_str("#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 #[allow(dead_code)]
 enum Lang {\n");
         for lang in all_languages {
