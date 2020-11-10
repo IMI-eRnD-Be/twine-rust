@@ -2,7 +2,7 @@
 //!
 //! # Usage
 //!
-//! 1.  You first need to add twine to your `[build-dependencies]` in `Cargo.toml`.
+//! You first need to add twine to your `[build-dependencies]` in `Cargo.toml`.
 //!
 //! Create (or edit) your `build.rs` file:
 //!
@@ -13,7 +13,7 @@
 //! }
 //! ```
 //!
-//! 2.  You need an INI file with your translations. Example with `translations.ini`:
+//! You need an INI file with your translations. Example with `translations.ini`:
 //!
 //! ```text
 //! [app_ruin_the_band]
@@ -37,16 +37,7 @@
 //!     fr = %.0f %
 //! ```
 //!
-//! ## Implementation Notes
-//!
-//! All translation keys must have all the languages of all the keys. For example, if all your
-//! keys have translations for `en` and `fr`, if one key has only `en`, it will fail to
-//! compile.
-//!
-//! Localized translation can be provided and will be used if available. Otherwise it will
-//! fallback to the default translation for that language.
-//!
-//! 3.  Now in your project you can use the macro `t!` to translate anything:
+//! Now in your project you can use the macro `t!` to translate anything:
 //!
 //! ```no_run
 //! # enum Lang { Fr(&'static str) }
@@ -64,7 +55,13 @@
 //! t!(format_percentage, 73.02f32 => lang)
 //! ```
 //!
-//! ## Implementation Notes
+//! # Implementation Notes
+//!
+//! All translation keys must have all the languages of all the keys. For example, if all your keys
+//! have translations for `en` and `fr`, if one key has only `en`, it will fail to compile.
+//!
+//! Localized translation can be provided and will be used if available. Otherwise it will
+//! fallback to the default translation for that language.
 //!
 //! Any typo in the key will make the compilation fail. Missing format arguments will also make
 //! the compilation fail.
