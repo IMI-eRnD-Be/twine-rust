@@ -15,7 +15,7 @@ Library for internationalization using the Twine file format.
         println!("cargo:rerun-if-changed=build.rs");
         twine::build_translations!("translations.ini" => "i18n.rs");
     }
-    ```rust
+    ```
 
 2.  You need an INI file with your translations. Example with `translations.ini`:
 
@@ -39,7 +39,7 @@ Library for internationalization using the Twine file format.
     [format_percentage]
         en = %.0f%
         fr = %.0f %
-    ```rust
+    ```
 
     ### Implementation Notes
 
@@ -61,7 +61,7 @@ Library for internationalization using the Twine file format.
 
     // using formatted arguments, this will output "73 %"
     t!(format_percentage, 73.02f32 => lang)
-    ```rust
+    ```
 
     ### Implementation Notes
 

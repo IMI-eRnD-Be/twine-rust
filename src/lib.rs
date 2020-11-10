@@ -6,7 +6,7 @@
 //!
 //!     Create (or edit) your `build.rs` file:
 //!
-//!     ```rust
+//!     ```
 //!     fn main() {
 //!         println!("cargo:rerun-if-changed=build.rs");
 //!         twine::build_translations!("translations.ini" => "i18n.rs");
@@ -48,7 +48,7 @@
 //!
 //! 3.  Now in your project you can use the macro `t!` to translate anything:
 //!
-//!     ```rust
+//!     ```
 //!     // use "" if there is no localization
 //!     let lang = Lang::Fr("be");
 //!
