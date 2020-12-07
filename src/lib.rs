@@ -188,7 +188,7 @@ macro_rules! build_translations {
 
         let mut src = String::new();
         let mut all_languages = HashSet::new();
-        src.push_str("macro_rules! t {\n");
+        src.push_str("#[macro_export]\nmacro_rules! t {\n");
         for (key, translations) in map {
             let key = normalize_key(key.as_str());
             src.push_str(&format!(
@@ -205,7 +205,7 @@ macro_rules! build_translations {
         // generate the `Lang` enum and its variants
         src.push_str("#[derive(Debug, Clone, Copy, PartialEq, Hash)]
 #[allow(dead_code)]
-enum Lang {\n");
+pub enum Lang {\n");
         for lang in all_languages {
             src.push_str(&format!("{}(&'static str),\n", lang));
         }
