@@ -162,7 +162,7 @@ macro_rules! build_translations {
                     .map(|x| format!("{:?}", x.as_str()));
                 let no_region = "_".to_string();
                 match_arms.push((format!(
-                    "Lang::{}({}) => format!({:?} $(, $fmt_args)*),\n",
+                    "$crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),\n",
                     lang,
                     region.as_ref().unwrap_or(&no_region),
                     out,
