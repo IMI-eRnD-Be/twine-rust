@@ -4,16 +4,19 @@ Colère contre la machine
 Hello, World !
 73 %
 0xBADCAFE
+Hello
 Ruin a band name by translating it in French
 Rage Against the Machine
 Hello, World!
 73%
 badcafe
+Hello
 Ruin a band name by translating it in French
 Wrath Against the Machine
 Hello, World!
 % 73 % foo
-badcafe";
+badcafe
+Hello";
 
 #[test]
 fn ui() {

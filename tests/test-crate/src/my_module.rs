@@ -7,5 +7,6 @@ pub fn my_fn() {
         println!("{}", t!(format_string, "Hello", "World" => lang));
         println!("{}", t!(format_percentage, 73.02f32 => lang));
         println!("{}", t!(format_hexadecimal, 0xBAD_CAFE => lang));
+        println!("{}", t!(fallback_to_default_lang => lang));
     }
 }

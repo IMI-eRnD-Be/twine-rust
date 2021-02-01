@@ -112,6 +112,7 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
     let generate_match_arms = |translations: HashMap<String, String>,
                                all_languages: &mut HashSet<String>| {
         let mut match_arms = Vec::new();
+        let mut default_out = None;
         for (lang, text) in translations {
             // transform all printf's format placeholder to Rust's format
             let mut out = String::new();
@@ -139,6 +140,10 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
                 }
             }
 
+            if default_out.is_none() {
+                default_out = Some(out.clone());
+            }
+
             // parse the language and region, then push the match arm
             let caps = re_lang.captures(lang.as_str()).expect("lang can be parsed");
             let lang = caps
@@ -160,6 +165,13 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
             all_languages.insert(lang);
         }
         match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+
+        if let Some(default_out) = default_out {
+            match_arms.push((
+                format!("_ => format!({:?} $(, $fmt_args)*),\n", default_out,),
+                false,
+            ));
+        }
 
         match_arms
     };
