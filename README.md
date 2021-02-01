@@ -17,7 +17,7 @@ Create (or edit) your `build.rs` file:
 ```rust
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-    twine::build_translations!("translations.ini" => "i18n.rs");
+    twine::build_translations(&["translations.ini"], "i18n.rs");
 }
 ```
 
