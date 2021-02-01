@@ -1,4 +1,4 @@
-#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+//#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
 
 mod my_module;
 
