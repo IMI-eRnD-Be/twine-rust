@@ -95,6 +95,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+#[allow(clippy::single_char_add_str)]
 pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
     ini_files: &[P],
     output_file: O,
