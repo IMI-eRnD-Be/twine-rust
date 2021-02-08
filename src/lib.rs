@@ -93,12 +93,43 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
+use std::io::Read;
 use std::path::Path;
 
-#[allow(clippy::single_char_add_str)]
+/// Generate the `t!()` macro based on the provided list of paths to Twine INI translation files.
 pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
     ini_files: &[P],
     output_file: O,
+) -> io::Result<()> {
+    let mut readers = ini_files
+        .iter()
+        .map(|file_path| {
+            let file_path = file_path.as_ref();
+            println!("cargo:rerun-if-changed={}", file_path.display());
+            fs::File::open(&file_path)
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+
+    build_translations_from_readers(readers.as_mut_slice(), output_file)
+}
+
+/// Generate the `t!()` macro based on the provided list of `&str` containing Twine INI
+/// translations.
+pub fn build_translations_from_str<P: AsRef<Path>>(
+    strs: &[&str],
+    output_file: P,
+) -> io::Result<()> {
+    let mut readers = strs.iter().map(|s| io::Cursor::new(s)).collect::<Vec<_>>();
+
+    build_translations_from_readers(readers.as_mut_slice(), output_file)
+}
+
+/// Generate the `t!()` macro based on the provided list of readers containing Twine INI
+/// translations.
+#[allow(clippy::single_char_add_str)]
+pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
+    readers: &mut [R],
+    output_file: P,
 ) -> io::Result<()> {
     // regex that tries to parse printf's format placeholders
     // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
@@ -179,17 +210,11 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
     let mut map = HashMap::new();
 
     // read all the INI files (might override existing keys)
-    for file_path in ini_files {
-        let file_path = file_path.as_ref();
-        match read_twine_ini(file_path) {
-            Err(err) => panic!(
-                "could not read Twine INI file `{}`: {}",
-                file_path.display(),
-                err
-            ),
+    for reader in readers {
+        match read_twine_ini(reader) {
+            Err(err) => panic!("could not read Twine INI file: {}", err),
             Ok(other_map) => map.extend(other_map),
         }
-        println!("cargo:rerun-if-changed={}", file_path.display());
     }
 
     let mut src = String::new();
@@ -228,9 +253,7 @@ pub enum Lang {\n",
     Ok(())
 }
 
-pub fn read_twine_ini<P: AsRef<Path>>(
-    path: P,
-) -> io::Result<HashMap<String, HashMap<String, String>>> {
+fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<HashMap<String, HashMap<String, String>>> {
     use std::io::BufRead;
 
     let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
@@ -239,8 +262,7 @@ pub fn read_twine_ini<P: AsRef<Path>>(
     let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
     let mut section = map.entry("".to_owned()).or_default();
 
-    let file = fs::File::open(path)?;
-    let reader = io::BufReader::new(file);
+    let reader = io::BufReader::new(reader);
     for line in reader.lines() {
         let line = line?;
         if let Some(caps) = re_section.captures(line.as_str()) {
