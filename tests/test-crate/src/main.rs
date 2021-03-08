@@ -5,6 +5,6 @@ mod my_module;
 include!(concat!(env!("OUT_DIR"), "/i18n.rs"));
 
 fn main() {
-    my_module::my_fn();
-    my_module::test_serde();
+    my_module::basic();
+    my_module::serde();
 }

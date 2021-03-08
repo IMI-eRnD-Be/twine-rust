@@ -1,3 +1,4 @@
+#![allow(clippy::needless_doctest_main)]
 //! ![Rust](https://github.com/IMI-eRnD-Be/twine/workflows/Rust/badge.svg)
 //! [![Latest Version](https://img.shields.io/crates/v/twine.svg)](https://crates.io/crates/twine)
 //! [![Docs.rs](https://docs.rs/twine/badge.svg)](https://docs.rs/twine)
@@ -129,7 +130,7 @@ pub fn build_translations_from_str<P: AsRef<Path>>(
     strs: &[&str],
     output_file: P,
 ) -> io::Result<()> {
-    let mut readers = strs.iter().map(|s| io::Cursor::new(s)).collect::<Vec<_>>();
+    let mut readers = strs.iter().map(io::Cursor::new).collect::<Vec<_>>();
 
     build_translations_from_readers(readers.as_mut_slice(), output_file)
 }
@@ -280,6 +281,7 @@ impl fmt::Display for TwineFormatter {
 }
 
 impl TwineFormatter {
+    #[allow(clippy::single_char_add_str)]
     fn generate_match_arms(
         f: &mut CodeFormatter<fmt::Formatter>,
         translations: &HashMap<String, String>,
@@ -347,7 +349,7 @@ impl TwineFormatter {
                 $crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),
                 "#,
                 lang,
-                region.as_ref().map(|x| x.as_str()).unwrap_or("_"),
+                region.as_deref().unwrap_or("_"),
                 format,
             )?;
         }
