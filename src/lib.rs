@@ -435,7 +435,7 @@ impl TwineFormatter {
                 }}
             }};
 
-            match &value[..2] {{
+            match lang {{
             "#,
         )?;
         f.indent(1);
