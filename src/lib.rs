@@ -194,8 +194,8 @@ struct TwineFormatter {
 impl fmt::Display for TwineFormatter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = indenter::CodeFormatter::new(f, "    ");
-
         let mut all_languages = HashSet::new();
+
         write!(
             f,
             r#"
@@ -214,10 +214,10 @@ impl fmt::Display for TwineFormatter {
                     match $lang {{
                 "#,
                 key,
-            );
+            )?;
             f.indent(2);
 
-            let match_arms = Self::generate_match_arms(&mut f, translations, &mut all_languages);
+            Self::generate_match_arms(&mut f, translations, &mut all_languages)?;
 
             f.dedent(2);
             write!(
@@ -244,7 +244,7 @@ impl fmt::Display for TwineFormatter {
             #[allow(dead_code)]
             pub enum Lang {{
             "#,
-        );
+        )?;
         f.indent(1);
 
         for lang in all_languages {
@@ -321,27 +321,20 @@ impl TwineFormatter {
                 .as_str()
                 .to_camel_case();
             let region = caps.get(3).map(|x| format!("{:?}", x.as_str()));
-            let no_region = "_".to_string();
-            match_arms.push((
-                format!(
-                    "$crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),\n",
-                    lang,
-                    region.as_ref().unwrap_or(&no_region),
-                    out,
-                ),
-                region.is_some(),
-            ));
+            match_arms.push((lang.clone(), region, out));
             all_languages.insert(lang);
         }
-        match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+        match_arms.sort_unstable_by_key(|(_, region, _)| region.is_none());
 
-        for (match_arm, _) in match_arms {
+        for (lang, region, format) in match_arms {
             write!(
                 f,
                 r#"
-                {}
+                $crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),
                 "#,
-                match_arm,
+                lang,
+                region.as_ref().map(|x| x.as_str()).unwrap_or("_"),
+                format,
             )?;
         }
 
