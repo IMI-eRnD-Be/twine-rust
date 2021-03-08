@@ -1,3 +1,4 @@
+#![allow(clippy::needless_doctest_main)]
 //! ![Rust](https://github.com/IMI-eRnD-Be/twine/workflows/Rust/badge.svg)
 //! [![Latest Version](https://img.shields.io/crates/v/twine.svg)](https://crates.io/crates/twine)
 //! [![Docs.rs](https://docs.rs/twine/badge.svg)](https://docs.rs/twine)
@@ -83,18 +84,28 @@
 //! Any typo in the key will make the compilation fail. Missing format arguments will also make
 //! the compilation fail.
 //!
+//! # Features
+//!
+//!  *  `serde`: when this feature is activated you will need to add `serde` to your dependencies
+//!     and the `Lang` enum generated implements `Serialize` and `Deserialize`.
+//!
 //! # License
 //!
 //! This work is dual-licensed under Apache 2.0 and MIT.
 //! You can choose between one of them if you use this work.
 
 use heck::{CamelCase, SnakeCase};
+use indenter::CodeFormatter;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::io;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
+
+type TwineData = HashMap<String, HashMap<String, String>>;
 
 /// Generate the `t!()` macro based on the provided list of paths to Twine INI translation files.
 pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
@@ -119,29 +130,169 @@ pub fn build_translations_from_str<P: AsRef<Path>>(
     strs: &[&str],
     output_file: P,
 ) -> io::Result<()> {
-    let mut readers = strs.iter().map(|s| io::Cursor::new(s)).collect::<Vec<_>>();
+    let mut readers = strs.iter().map(io::Cursor::new).collect::<Vec<_>>();
 
     build_translations_from_readers(readers.as_mut_slice(), output_file)
 }
 
 /// Generate the `t!()` macro based on the provided list of readers containing Twine INI
 /// translations.
-#[allow(clippy::single_char_add_str)]
 pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
     readers: &mut [R],
     output_file: P,
 ) -> io::Result<()> {
-    // regex that tries to parse printf's format placeholders
-    // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
-    let re_printf = Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap();
-    let re_lang = Regex::new(r"(\w+)(-(\w+))?").unwrap();
+    let mut map = HashMap::new();
 
-    // turns all the keys into snake case automatically
-    let normalize_key = |key: &str| key.to_snake_case().replace(".", "__");
+    // read all the INI files (might override existing keys)
+    for reader in readers {
+        match read_twine_ini(reader) {
+            Err(err) => panic!("could not read Twine INI file: {}", err),
+            Ok(other_map) => map.extend(other_map),
+        }
+    }
 
-    // generate match arms for each language (for a given translation key)
-    let generate_match_arms = |translations: HashMap<String, String>,
-                               all_languages: &mut HashSet<String>| {
+    let out_dir = std::env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join(output_file);
+    let _ = fs::create_dir_all(dest_path.parent().unwrap());
+    let mut f = io::BufWriter::new(
+        fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(dest_path)?,
+    );
+    write!(f, "{}", TwineFormatter { map })?;
+
+    Ok(())
+}
+
+fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<TwineData> {
+    use std::io::BufRead;
+
+    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
+    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
+
+    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut section = map.entry("".to_owned()).or_default();
+
+    let reader = io::BufReader::new(reader);
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(caps) = re_section.captures(line.as_str()) {
+            section = map
+                .entry(caps.get(1).unwrap().as_str().to_owned())
+                .or_default();
+        }
+        if let Some(caps) = re_key_value.captures(line.as_str()) {
+            section.insert(
+                caps.get(1).unwrap().as_str().to_owned(),
+                caps.get(2).unwrap().as_str().to_owned(),
+            );
+        }
+    }
+
+    Ok(map)
+}
+
+struct TwineFormatter {
+    map: TwineData,
+}
+
+impl fmt::Display for TwineFormatter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = CodeFormatter::new(f, "    ");
+        let mut all_languages = HashSet::new();
+        let mut all_regions = HashSet::new();
+
+        write!(
+            f,
+            r#"
+            #[macro_export]
+            macro_rules! t {{
+            "#,
+        )?;
+        f.indent(1);
+
+        for (key, translations) in self.map.iter() {
+            let key = Self::normalize_key(key.as_str());
+            write!(
+                f,
+                r#"
+                ({} $(, $fmt_args:expr)* => $lang:expr) => {{
+                    match $lang {{
+                "#,
+                key,
+            )?;
+            f.indent(2);
+
+            Self::generate_match_arms(&mut f, translations, &mut all_languages, &mut all_regions)?;
+
+            f.dedent(2);
+            write!(
+                f,
+                r#"
+                }}}};
+                "#,
+            )?;
+        }
+        f.dedent(1);
+
+        write!(
+            f,
+            r#"
+            }}
+            "#,
+        )?;
+
+        // generate the `Lang` enum and its variants
+        write!(
+            f,
+            r#"
+            #[derive(Debug, Clone, Copy, PartialEq, Hash)]
+            #[allow(dead_code)]
+            pub enum Lang {{
+            "#,
+        )?;
+        f.indent(1);
+
+        for lang in all_languages.iter() {
+            write!(
+                f,
+                r#"
+                {}(&'static str),
+                "#,
+                lang,
+            )?;
+        }
+
+        f.dedent(1);
+        write!(
+            f,
+            r#"
+            }}
+            "#,
+        )?;
+
+        #[cfg(feature = "serde")]
+        Self::generate_serde(&mut f, &all_languages, &all_regions)?;
+
+        Ok(())
+    }
+}
+
+impl TwineFormatter {
+    #[allow(clippy::single_char_add_str)]
+    fn generate_match_arms(
+        f: &mut CodeFormatter<fmt::Formatter>,
+        translations: &HashMap<String, String>,
+        all_languages: &mut HashSet<String>,
+        all_regions: &mut HashSet<String>,
+    ) -> fmt::Result {
+        // regex that tries to parse printf's format placeholders
+        // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
+        let re_printf = Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap();
+        let re_lang = Regex::new(r"(\w+)(-(\w+))?").unwrap();
+
         let mut match_arms = Vec::new();
         let mut default_out = None;
         for (lang, text) in translations {
@@ -182,101 +333,175 @@ pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
                 .expect("the language is always there")
                 .as_str()
                 .to_camel_case();
-            let region = caps.get(3).map(|x| format!("{:?}", x.as_str()));
-            let no_region = "_".to_string();
-            match_arms.push((
-                format!(
-                    "$crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),\n",
-                    lang,
-                    region.as_ref().unwrap_or(&no_region),
-                    out,
-                ),
-                region.is_some(),
-            ));
-            all_languages.insert(lang);
+            let region = caps.get(3);
+            all_languages.insert(lang.clone());
+            if let Some(region) = region {
+                all_regions.insert(region.as_str().to_string());
+            }
+            match_arms.push((lang, region.map(|x| format!("{:?}", x.as_str())), out));
         }
-        match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
+        match_arms.sort_unstable_by_key(|(_, region, _)| region.is_none());
+
+        for (lang, region, format) in match_arms {
+            write!(
+                f,
+                r#"
+                $crate::Lang::{}({}) => format!({:?} $(, $fmt_args)*),
+                "#,
+                lang,
+                region.as_deref().unwrap_or("_"),
+                format,
+            )?;
+        }
 
         if let Some(default_out) = default_out {
-            match_arms.push((
-                format!("_ => format!({:?} $(, $fmt_args)*),\n", default_out,),
-                false,
-            ));
+            write!(
+                f,
+                r#"
+                _ => format!({:?} $(, $fmt_args)*),
+                "#,
+                default_out,
+            )?;
         }
 
-        match_arms
-    };
+        Ok(())
+    }
 
-    let mut map = HashMap::new();
+    // turns all the keys into snake case automatically
+    fn normalize_key(key: &str) -> String {
+        key.to_snake_case().replace(".", "__")
+    }
 
-    // read all the INI files (might override existing keys)
-    for reader in readers {
-        match read_twine_ini(reader) {
-            Err(err) => panic!("could not read Twine INI file: {}", err),
-            Ok(other_map) => map.extend(other_map),
+    #[cfg(feature = "serde")]
+    fn generate_serde(
+        f: &mut CodeFormatter<fmt::Formatter>,
+        all_languages: &HashSet<String>,
+        all_regions: &HashSet<String>,
+    ) -> fmt::Result {
+        write!(
+            f,
+            r#"
+
+            impl<'de> serde::Deserialize<'de> for Lang {{
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: serde::Deserializer<'de>,
+                {{
+                    use serde::de;
+                    use std::fmt;
+
+                    struct LangVisitor;
+
+                    impl<'de> de::Visitor<'de> for LangVisitor {{
+                        type Value = Lang;
+
+                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {{
+                            formatter.write_str("expected string")
+                        }}
+
+                        fn visit_str<E>(self, value: &str) -> Result<Lang, E>
+                        where
+                            E: de::Error,
+                        {{
+                            let mut it = value.splitn(2, '_');
+                            let lang = it.next().unwrap();
+                            let region = it.next().unwrap_or("");
+
+                            let region = match region.to_lowercase().as_str() {{
+            "#,
+        )?;
+        f.indent(5);
+
+        for region in all_regions {
+            write!(
+                f,
+                r#"
+                {region:?} => {region:?},
+                "#,
+                region = region,
+            )?;
         }
-    }
 
-    let mut src = String::new();
-    let mut all_languages = HashSet::new();
-    src.push_str("#[macro_export]\nmacro_rules! t {\n");
-    for (key, translations) in map {
-        let key = normalize_key(key.as_str());
-        src.push_str(&format!(
-            "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n",
-            key,
-        ));
+        f.dedent(1);
+        write!(
+            f,
+            r#"
+                "" => "",
+                _ => {{
+                    return Err(de::Error::invalid_value(
+                        de::Unexpected::Str(region),
+                        &"existing region",
+                    ));
+                }}
+            }};
 
-        let match_arms = generate_match_arms(translations, &mut all_languages);
+            match &value[..2] {{
+            "#,
+        )?;
+        f.indent(1);
 
-        src.extend(match_arms.iter().map(|(match_arm, _)| match_arm.as_str()));
-        src.push_str("}};\n")
-    }
-    src.push_str("}\n");
-
-    // generate the `Lang` enum and its variants
-    src.push_str(
-        "#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-#[allow(dead_code)]
-pub enum Lang {\n",
-    );
-    for lang in all_languages {
-        src.push_str(&format!("{}(&'static str),\n", lang));
-    }
-    src.push_str("}\n");
-
-    let out_dir = std::env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join(output_file);
-    let _ = std::fs::create_dir_all(dest_path.parent().unwrap());
-    std::fs::write(&dest_path, src)?;
-
-    Ok(())
-}
-
-fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<HashMap<String, HashMap<String, String>>> {
-    use std::io::BufRead;
-
-    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
-    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
-
-    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
-    let mut section = map.entry("".to_owned()).or_default();
-
-    let reader = io::BufReader::new(reader);
-    for line in reader.lines() {
-        let line = line?;
-        if let Some(caps) = re_section.captures(line.as_str()) {
-            section = map
-                .entry(caps.get(1).unwrap().as_str().to_owned())
-                .or_default();
+        for lang in all_languages {
+            write!(
+                f,
+                r#"
+                {:?} => Ok(Lang::{}(region)),
+                "#,
+                lang.to_snake_case(),
+                lang,
+            )?;
         }
-        if let Some(caps) = re_key_value.captures(line.as_str()) {
-            section.insert(
-                caps.get(1).unwrap().as_str().to_owned(),
-                caps.get(2).unwrap().as_str().to_owned(),
-            );
-        }
-    }
 
-    Ok(map)
+        f.dedent(5);
+        write!(
+            f,
+            r#"
+                                _ => {{
+                                    return Err(de::Error::invalid_value(
+                                        de::Unexpected::Str(region),
+                                        &"existing language",
+                                    ));
+                                }}
+                            }}
+                        }}
+                    }}
+
+                    deserializer.deserialize_str(LangVisitor)
+                }}
+            }}
+
+            impl serde::Serialize for Lang {{
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::ser::Serializer,
+                {{
+                    match self {{
+            "#,
+        )?;
+
+        for lang in all_languages {
+            write!(
+                f,
+                r#"
+                Lang::{variant}(region) if region.is_empty() => serializer.serialize_str({lang:?}),
+                Lang::{variant}(region) => serializer.serialize_str(
+                    &format!("{{}}_{{}}", {lang:?}, region),
+                ),
+                "#,
+                variant = lang,
+                lang = lang.to_snake_case(),
+            )?;
+        }
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+                    }}
+                }}
+            }}
+            "#,
+        )?;
+
+        Ok(())
+    }
 }

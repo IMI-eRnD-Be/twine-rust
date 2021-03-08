@@ -80,6 +80,11 @@ fallback to the default translation for that language.
 Any typo in the key will make the compilation fail. Missing format arguments will also make
 the compilation fail.
 
+## Features
+
+ *  `serde`: when this feature is activated you will need to add `serde` to your dependencies
+    and the `Lang` enum generated implements `Serialize` and `Deserialize`.
+
 ## License
 
 This work is dual-licensed under Apache 2.0 and MIT.
