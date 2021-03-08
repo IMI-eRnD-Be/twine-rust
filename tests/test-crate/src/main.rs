@@ -6,4 +6,5 @@ include!(concat!(env!("OUT_DIR"), "/i18n.rs"));
 
 fn main() {
     my_module::my_fn();
+    my_module::test_serde();
 }

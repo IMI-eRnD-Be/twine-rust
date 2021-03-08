@@ -10,3 +10,7 @@ pub fn my_fn() {
         println!("{}", t!(fallback_to_default_lang => lang));
     }
 }
+
+pub fn test_serde() {
+    //let lang: crate::Lang = serde_json::from_str("en_GB").unwrap();
+}

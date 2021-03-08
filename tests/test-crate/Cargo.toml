@@ -8,3 +8,6 @@ edition = "2018"
 
 [build-dependencies]
 twine = { path = "../.." }
+
+[dependencies]
+serde_json = "1"

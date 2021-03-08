@@ -14,5 +14,7 @@ categories = ["internationalization"]
 description = "Library for internationalization using the Twine file format"
 
 [dependencies]
+indenter = { version = "0.3", features = ["std"] }
 heck = "0.3"
 regex = "1"
+serde = { version = "1", optional = true }

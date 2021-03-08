@@ -91,10 +91,14 @@
 use heck::{CamelCase, SnakeCase};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::io;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
+
+type TwineData = HashMap<String, HashMap<String, String>>;
 
 /// Generate the `t!()` macro based on the provided list of paths to Twine INI translation files.
 pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
@@ -126,22 +130,156 @@ pub fn build_translations_from_str<P: AsRef<Path>>(
 
 /// Generate the `t!()` macro based on the provided list of readers containing Twine INI
 /// translations.
-#[allow(clippy::single_char_add_str)]
 pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
     readers: &mut [R],
     output_file: P,
 ) -> io::Result<()> {
-    // regex that tries to parse printf's format placeholders
-    // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
-    let re_printf = Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap();
-    let re_lang = Regex::new(r"(\w+)(-(\w+))?").unwrap();
+    let mut map = HashMap::new();
 
-    // turns all the keys into snake case automatically
-    let normalize_key = |key: &str| key.to_snake_case().replace(".", "__");
+    // read all the INI files (might override existing keys)
+    for reader in readers {
+        match read_twine_ini(reader) {
+            Err(err) => panic!("could not read Twine INI file: {}", err),
+            Ok(other_map) => map.extend(other_map),
+        }
+    }
 
-    // generate match arms for each language (for a given translation key)
-    let generate_match_arms = |translations: HashMap<String, String>,
-                               all_languages: &mut HashSet<String>| {
+    let out_dir = std::env::var_os("OUT_DIR").unwrap();
+    let dest_path = Path::new(&out_dir).join(output_file);
+    let _ = fs::create_dir_all(dest_path.parent().unwrap());
+    let mut f = io::BufWriter::new(
+        fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(dest_path)?,
+    );
+    write!(f, "{}", TwineFormatter { map })?;
+
+    Ok(())
+}
+
+fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<TwineData> {
+    use std::io::BufRead;
+
+    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
+    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
+
+    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut section = map.entry("".to_owned()).or_default();
+
+    let reader = io::BufReader::new(reader);
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(caps) = re_section.captures(line.as_str()) {
+            section = map
+                .entry(caps.get(1).unwrap().as_str().to_owned())
+                .or_default();
+        }
+        if let Some(caps) = re_key_value.captures(line.as_str()) {
+            section.insert(
+                caps.get(1).unwrap().as_str().to_owned(),
+                caps.get(2).unwrap().as_str().to_owned(),
+            );
+        }
+    }
+
+    Ok(map)
+}
+
+struct TwineFormatter {
+    map: TwineData,
+}
+
+impl fmt::Display for TwineFormatter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut f = indenter::CodeFormatter::new(f, "    ");
+
+        let mut all_languages = HashSet::new();
+        write!(
+            f,
+            r#"
+            #[macro_export]
+            macro_rules! t {{
+            "#,
+        )?;
+        f.indent(1);
+
+        for (key, translations) in self.map.iter() {
+            let key = Self::normalize_key(key.as_str());
+            write!(
+                f,
+                r#"
+                ({} $(, $fmt_args:expr)* => $lang:expr) => {{
+                    match $lang {{
+                "#,
+                key,
+            );
+            f.indent(2);
+
+            let match_arms = Self::generate_match_arms(&mut f, translations, &mut all_languages);
+
+            f.dedent(2);
+            write!(
+                f,
+                r#"
+                }}}};
+                "#,
+            )?;
+        }
+        f.dedent(1);
+
+        write!(
+            f,
+            r#"
+            }}
+            "#,
+        )?;
+
+        // generate the `Lang` enum and its variants
+        write!(
+            f,
+            r#"
+            #[derive(Debug, Clone, Copy, PartialEq, Hash)]
+            #[allow(dead_code)]
+            pub enum Lang {{
+            "#,
+        );
+        f.indent(1);
+
+        for lang in all_languages {
+            write!(
+                f,
+                r#"
+                {}(&'static str),
+                "#,
+                lang,
+            )?;
+        }
+
+        f.dedent(1);
+        write!(
+            f,
+            r#"
+            }}
+            "#,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl TwineFormatter {
+    fn generate_match_arms<W: fmt::Write>(
+        f: &mut W,
+        translations: &HashMap<String, String>,
+        all_languages: &mut HashSet<String>,
+    ) -> fmt::Result {
+        // regex that tries to parse printf's format placeholders
+        // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
+        let re_printf = Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap();
+        let re_lang = Regex::new(r"(\w+)(-(\w+))?").unwrap();
+
         let mut match_arms = Vec::new();
         let mut default_out = None;
         for (lang, text) in translations {
@@ -197,86 +335,31 @@ pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
         }
         match_arms.sort_unstable_by_key(|(_, has_region)| !has_region);
 
+        for (match_arm, _) in match_arms {
+            write!(
+                f,
+                r#"
+                {}
+                "#,
+                match_arm,
+            )?;
+        }
+
         if let Some(default_out) = default_out {
-            match_arms.push((
-                format!("_ => format!({:?} $(, $fmt_args)*),\n", default_out,),
-                false,
-            ));
+            write!(
+                f,
+                r#"
+                _ => format!({:?} $(, $fmt_args)*),
+                "#,
+                default_out,
+            )?;
         }
 
-        match_arms
-    };
-
-    let mut map = HashMap::new();
-
-    // read all the INI files (might override existing keys)
-    for reader in readers {
-        match read_twine_ini(reader) {
-            Err(err) => panic!("could not read Twine INI file: {}", err),
-            Ok(other_map) => map.extend(other_map),
-        }
+        Ok(())
     }
 
-    let mut src = String::new();
-    let mut all_languages = HashSet::new();
-    src.push_str("#[macro_export]\nmacro_rules! t {\n");
-    for (key, translations) in map {
-        let key = normalize_key(key.as_str());
-        src.push_str(&format!(
-            "({} $(, $fmt_args:expr)* => $lang:expr) => {{\nmatch $lang {{\n",
-            key,
-        ));
-
-        let match_arms = generate_match_arms(translations, &mut all_languages);
-
-        src.extend(match_arms.iter().map(|(match_arm, _)| match_arm.as_str()));
-        src.push_str("}};\n")
+    // turns all the keys into snake case automatically
+    fn normalize_key(key: &str) -> String {
+        key.to_snake_case().replace(".", "__")
     }
-    src.push_str("}\n");
-
-    // generate the `Lang` enum and its variants
-    src.push_str(
-        "#[derive(Debug, Clone, Copy, PartialEq, Hash)]
-#[allow(dead_code)]
-pub enum Lang {\n",
-    );
-    for lang in all_languages {
-        src.push_str(&format!("{}(&'static str),\n", lang));
-    }
-    src.push_str("}\n");
-
-    let out_dir = std::env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join(output_file);
-    let _ = std::fs::create_dir_all(dest_path.parent().unwrap());
-    std::fs::write(&dest_path, src)?;
-
-    Ok(())
-}
-
-fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<HashMap<String, HashMap<String, String>>> {
-    use std::io::BufRead;
-
-    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
-    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
-
-    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
-    let mut section = map.entry("".to_owned()).or_default();
-
-    let reader = io::BufReader::new(reader);
-    for line in reader.lines() {
-        let line = line?;
-        if let Some(caps) = re_section.captures(line.as_str()) {
-            section = map
-                .entry(caps.get(1).unwrap().as_str().to_owned())
-                .or_default();
-        }
-        if let Some(caps) = re_key_value.captures(line.as_str()) {
-            section.insert(
-                caps.get(1).unwrap().as_str().to_owned(),
-                caps.get(2).unwrap().as_str().to_owned(),
-            );
-        }
-    }
-
-    Ok(map)
 }
