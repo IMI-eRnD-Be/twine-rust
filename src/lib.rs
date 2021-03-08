@@ -83,12 +83,18 @@
 //! Any typo in the key will make the compilation fail. Missing format arguments will also make
 //! the compilation fail.
 //!
+//! # Features
+//!
+//!  *  `serde`: when this feature is activated you will need to add `serde` to your dependencies
+//!     and the `Lang` enum generated implements `Serialize` and `Deserialize`.
+//!
 //! # License
 //!
 //! This work is dual-licensed under Apache 2.0 and MIT.
 //! You can choose between one of them if you use this work.
 
 use heck::{CamelCase, SnakeCase};
+use indenter::CodeFormatter;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -193,8 +199,9 @@ struct TwineFormatter {
 
 impl fmt::Display for TwineFormatter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut f = indenter::CodeFormatter::new(f, "    ");
+        let mut f = CodeFormatter::new(f, "    ");
         let mut all_languages = HashSet::new();
+        let mut all_regions = HashSet::new();
 
         write!(
             f,
@@ -217,7 +224,7 @@ impl fmt::Display for TwineFormatter {
             )?;
             f.indent(2);
 
-            Self::generate_match_arms(&mut f, translations, &mut all_languages)?;
+            Self::generate_match_arms(&mut f, translations, &mut all_languages, &mut all_regions)?;
 
             f.dedent(2);
             write!(
@@ -247,7 +254,7 @@ impl fmt::Display for TwineFormatter {
         )?;
         f.indent(1);
 
-        for lang in all_languages {
+        for lang in all_languages.iter() {
             write!(
                 f,
                 r#"
@@ -265,15 +272,19 @@ impl fmt::Display for TwineFormatter {
             "#,
         )?;
 
+        #[cfg(feature = "serde")]
+        Self::generate_serde(&mut f, &all_languages, &all_regions)?;
+
         Ok(())
     }
 }
 
 impl TwineFormatter {
-    fn generate_match_arms<W: fmt::Write>(
-        f: &mut W,
+    fn generate_match_arms(
+        f: &mut CodeFormatter<fmt::Formatter>,
         translations: &HashMap<String, String>,
         all_languages: &mut HashSet<String>,
+        all_regions: &mut HashSet<String>,
     ) -> fmt::Result {
         // regex that tries to parse printf's format placeholders
         // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
@@ -320,9 +331,12 @@ impl TwineFormatter {
                 .expect("the language is always there")
                 .as_str()
                 .to_camel_case();
-            let region = caps.get(3).map(|x| format!("{:?}", x.as_str()));
-            match_arms.push((lang.clone(), region, out));
-            all_languages.insert(lang);
+            let region = caps.get(3);
+            all_languages.insert(lang.clone());
+            if let Some(region) = region {
+                all_regions.insert(region.as_str().to_string());
+            }
+            match_arms.push((lang, region.map(|x| format!("{:?}", x.as_str())), out));
         }
         match_arms.sort_unstable_by_key(|(_, region, _)| region.is_none());
 
@@ -354,5 +368,138 @@ impl TwineFormatter {
     // turns all the keys into snake case automatically
     fn normalize_key(key: &str) -> String {
         key.to_snake_case().replace(".", "__")
+    }
+
+    #[cfg(feature = "serde")]
+    fn generate_serde(
+        f: &mut CodeFormatter<fmt::Formatter>,
+        all_languages: &HashSet<String>,
+        all_regions: &HashSet<String>,
+    ) -> fmt::Result {
+        write!(
+            f,
+            r#"
+
+            impl<'de> serde::Deserialize<'de> for Lang {{
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: serde::Deserializer<'de>,
+                {{
+                    use serde::de;
+                    use std::fmt;
+
+                    struct LangVisitor;
+
+                    impl<'de> de::Visitor<'de> for LangVisitor {{
+                        type Value = Lang;
+
+                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {{
+                            formatter.write_str("expected string")
+                        }}
+
+                        fn visit_str<E>(self, value: &str) -> Result<Lang, E>
+                        where
+                            E: de::Error,
+                        {{
+                            let mut it = value.splitn(2, '_');
+                            let lang = it.next().unwrap();
+                            let region = it.next().unwrap_or("");
+
+                            let region = match region.to_lowercase().as_str() {{
+            "#,
+        )?;
+        f.indent(5);
+
+        for region in all_regions {
+            write!(
+                f,
+                r#"
+                {region:?} => {region:?},
+                "#,
+                region = region,
+            )?;
+        }
+
+        f.dedent(1);
+        write!(
+            f,
+            r#"
+                "" => "",
+                _ => {{
+                    return Err(de::Error::invalid_value(
+                        de::Unexpected::Str(region),
+                        &"existing region",
+                    ));
+                }}
+            }};
+
+            match &value[..2] {{
+            "#,
+        )?;
+        f.indent(1);
+
+        for lang in all_languages {
+            write!(
+                f,
+                r#"
+                {:?} => Ok(Lang::{}(region)),
+                "#,
+                lang.to_snake_case(),
+                lang,
+            )?;
+        }
+
+        f.dedent(5);
+        write!(
+            f,
+            r#"
+                                _ => {{
+                                    return Err(de::Error::invalid_value(
+                                        de::Unexpected::Str(region),
+                                        &"existing language",
+                                    ));
+                                }}
+                            }}
+                        }}
+                    }}
+
+                    deserializer.deserialize_str(LangVisitor)
+                }}
+            }}
+
+            impl serde::Serialize for Lang {{
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::ser::Serializer,
+                {{
+                    match self {{
+            "#,
+        )?;
+
+        for lang in all_languages {
+            write!(
+                f,
+                r#"
+                Lang::{variant}(region) if region.is_empty() => serializer.serialize_str({lang:?}),
+                Lang::{variant}(region) => serializer.serialize_str(
+                    &format!("{{}}_{{}}", {lang:?}, region),
+                ),
+                "#,
+                variant = lang,
+                lang = lang.to_snake_case(),
+            )?;
+        }
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+                    }}
+                }}
+            }}
+            "#,
+        )?;
+
+        Ok(())
     }
 }

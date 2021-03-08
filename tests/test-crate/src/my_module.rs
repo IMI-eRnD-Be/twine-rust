@@ -12,5 +12,10 @@ pub fn my_fn() {
 }
 
 pub fn test_serde() {
-    //let lang: crate::Lang = serde_json::from_str("en_GB").unwrap();
+    let lang: crate::Lang = serde_json::from_str("\"en_GB\"").unwrap();
+    assert_eq!(serde_json::to_string(&lang).unwrap(), "\"en_gb\"");
+    let lang: crate::Lang = serde_json::from_str("\"en\"").unwrap();
+    assert_eq!(serde_json::to_string(&lang).unwrap(), "\"en\"");
+    let lang: crate::Lang = serde_json::from_str("\"fr\"").unwrap();
+    assert_eq!(serde_json::to_string(&lang).unwrap(), "\"fr\"");
 }
