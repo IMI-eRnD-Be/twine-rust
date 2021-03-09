@@ -96,6 +96,7 @@
 
 use heck::{CamelCase, SnakeCase};
 use indenter::CodeFormatter;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -104,6 +105,15 @@ use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::path::Path;
+
+// regex that tries to parse printf's format placeholders
+// see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
+static RE_PRINTF: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap());
+static RE_LANG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\w+)(-(\w+))?").unwrap());
+static RE_SECTION: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\[([^\]]+)\]").unwrap());
+static RE_KEY_VALUE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap());
 
 type TwineData = HashMap<String, HashMap<String, String>>;
 
@@ -169,21 +179,18 @@ pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
 fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<TwineData> {
     use std::io::BufRead;
 
-    let re_section = regex::Regex::new(r"^\s*\[([^\]]+)\]").unwrap();
-    let re_key_value = regex::Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap();
-
     let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
     let mut section = map.entry("".to_owned()).or_default();
 
     let reader = io::BufReader::new(reader);
     for line in reader.lines() {
         let line = line?;
-        if let Some(caps) = re_section.captures(line.as_str()) {
+        if let Some(caps) = RE_SECTION.captures(line.as_str()) {
             section = map
                 .entry(caps.get(1).unwrap().as_str().to_owned())
                 .or_default();
         }
-        if let Some(caps) = re_key_value.captures(line.as_str()) {
+        if let Some(caps) = RE_KEY_VALUE.captures(line.as_str()) {
             section.insert(
                 caps.get(1).unwrap().as_str().to_owned(),
                 caps.get(2).unwrap().as_str().to_owned(),
@@ -225,7 +232,7 @@ impl fmt::Display for TwineFormatter {
             )?;
             f.indent(2);
 
-            Self::generate_match_arms(&mut f, translations, &mut all_languages, &mut all_regions)?;
+            self.generate_match_arms(&mut f, translations, &mut all_languages, &mut all_regions)?;
 
             f.dedent(2);
             write!(
@@ -283,22 +290,18 @@ impl fmt::Display for TwineFormatter {
 impl TwineFormatter {
     #[allow(clippy::single_char_add_str)]
     fn generate_match_arms(
+        &self,
         f: &mut CodeFormatter<fmt::Formatter>,
         translations: &HashMap<String, String>,
         all_languages: &mut HashSet<String>,
         all_regions: &mut HashSet<String>,
     ) -> fmt::Result {
-        // regex that tries to parse printf's format placeholders
-        // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
-        let re_printf = Regex::new(r"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|[^%]+|%%|%$").unwrap();
-        let re_lang = Regex::new(r"(\w+)(-(\w+))?").unwrap();
-
         let mut match_arms = Vec::new();
         let mut default_out = None;
         for (lang, text) in translations {
             // transform all printf's format placeholder to Rust's format
             let mut out = String::new();
-            for caps in re_printf.captures_iter(text.as_str()) {
+            for caps in RE_PRINTF.captures_iter(text.as_str()) {
                 if let Some(type_) = caps.get(4) {
                     out.push_str("{:");
                     if let Some(flag) = caps.get(1) {
@@ -327,7 +330,7 @@ impl TwineFormatter {
             }
 
             // parse the language and region, then push the match arm
-            let caps = re_lang.captures(lang.as_str()).expect("lang can be parsed");
+            let caps = RE_LANG.captures(lang.as_str()).expect("lang can be parsed");
             let lang = caps
                 .get(1)
                 .expect("the language is always there")
