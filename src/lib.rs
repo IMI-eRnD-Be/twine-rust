@@ -480,6 +480,7 @@ impl TwineFormatter {
                     match self {{
             "#,
         )?;
+        f.indent(3);
 
         for lang in all_languages {
             write!(
