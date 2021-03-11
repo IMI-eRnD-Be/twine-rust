@@ -115,7 +115,7 @@ static RE_SECTION: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\[([^\]]+)\]").un
 static RE_KEY_VALUE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"^\s*([^\s=;#]+)\s*=\s*(.+?)\s*$").unwrap());
 
-type TwineData = HashMap<String, HashMap<String, String>>;
+type TwineData = HashMap<String, Vec<(String, String)>>;
 
 /// Generate the `t!()` macro based on the provided list of paths to Twine INI translation files.
 pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
@@ -179,22 +179,27 @@ pub fn build_translations_from_readers<R: Read, P: AsRef<Path>>(
 fn read_twine_ini<R: Read>(reader: &mut R) -> io::Result<TwineData> {
     use std::io::BufRead;
 
-    let mut map: HashMap<String, HashMap<String, String>> = HashMap::new();
-    let mut section = map.entry("".to_owned()).or_default();
+    let mut map: TwineData = HashMap::new();
+    let mut section = None;
 
     let reader = io::BufReader::new(reader);
-    for line in reader.lines() {
+    for (i, line) in reader.lines().enumerate() {
         let line = line?;
         if let Some(caps) = RE_SECTION.captures(line.as_str()) {
-            section = map
-                .entry(caps.get(1).unwrap().as_str().to_owned())
-                .or_default();
+            section = Some(
+                map.entry(caps.get(1).unwrap().as_str().to_owned())
+                    .or_default(),
+            );
         }
         if let Some(caps) = RE_KEY_VALUE.captures(line.as_str()) {
-            section.insert(
-                caps.get(1).unwrap().as_str().to_owned(),
-                caps.get(2).unwrap().as_str().to_owned(),
-            );
+            if let Some(section) = section.as_mut() {
+                section.push((
+                    caps.get(1).unwrap().as_str().to_owned(),
+                    caps.get(2).unwrap().as_str().to_owned(),
+                ));
+            } else {
+                panic!("key-value outside section at line {}", i + 1);
+            }
         }
     }
 
@@ -220,12 +225,15 @@ impl fmt::Display for TwineFormatter {
         )?;
         f.indent(1);
 
-        for (key, translations) in self.map.iter() {
+        let mut sorted: Vec<_> = self.map.iter().collect();
+        sorted.sort_by(|(a_key, _), (b_key, _)| a_key.cmp(b_key));
+
+        for (key, translations) in sorted {
             let key = Self::normalize_key(key.as_str());
             write!(
                 f,
                 r#"
-                ({} $(, $fmt_args:expr)* => $lang:expr) => {{
+                ({} $(, $fmt_args:expr)* => $lang:expr) => {{{{
                     match $lang {{
                 "#,
                 key,
@@ -238,6 +246,7 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
+                    }}
                 }}}};
                 "#,
             )?;
@@ -261,6 +270,9 @@ impl fmt::Display for TwineFormatter {
             "#,
         )?;
         f.indent(1);
+
+        let mut all_languages: Vec<_> = all_languages.iter().collect();
+        all_languages.sort_by(|a, b| a.cmp(b));
 
         for lang in all_languages.iter() {
             write!(
@@ -292,7 +304,7 @@ impl TwineFormatter {
     fn generate_match_arms(
         &self,
         f: &mut CodeFormatter<fmt::Formatter>,
-        translations: &HashMap<String, String>,
+        translations: &Vec<(String, String)>,
         all_languages: &mut HashSet<String>,
         all_regions: &mut HashSet<String>,
     ) -> fmt::Result {
@@ -343,7 +355,11 @@ impl TwineFormatter {
             }
             match_arms.push((lang, region.map(|x| format!("{:?}", x.as_str())), out));
         }
-        match_arms.sort_unstable_by_key(|(_, region, _)| region.is_none());
+        match_arms.sort_unstable_by(|(a_lang, a_region, _), (b_lang, b_region, _)| {
+            a_lang
+                .cmp(b_lang)
+                .then(a_region.is_none().cmp(&b_region.is_none()))
+        });
 
         for (lang, region, format) in match_arms {
             write!(
@@ -378,7 +394,7 @@ impl TwineFormatter {
     #[cfg(feature = "serde")]
     fn generate_serde(
         f: &mut CodeFormatter<fmt::Formatter>,
-        all_languages: &HashSet<String>,
+        all_languages: &Vec<&String>,
         all_regions: &HashSet<String>,
     ) -> fmt::Result {
         write!(
