@@ -293,7 +293,11 @@ impl fmt::Display for TwineFormatter {
         )?;
 
         #[cfg(feature = "serde")]
-        Self::generate_serde(&mut f, &all_languages, &all_regions)?;
+        {
+            let mut all_regions: Vec<_> = all_regions.iter().collect();
+            all_regions.sort_by(|a, b| a.cmp(b));
+            Self::generate_serde(&mut f, &all_languages, &all_regions)?;
+        }
 
         Ok(())
     }
@@ -395,7 +399,7 @@ impl TwineFormatter {
     fn generate_serde(
         f: &mut CodeFormatter<fmt::Formatter>,
         all_languages: &Vec<&String>,
-        all_regions: &HashSet<String>,
+        all_regions: &Vec<&String>,
     ) -> fmt::Result {
         write!(
             f,

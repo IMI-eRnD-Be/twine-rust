@@ -4,7 +4,8 @@ use std::fs;
 fn deterministic() {
     let translations = r#"
         [band_tool]
-            en = Tool
+            en-us = Tool (US)
+            en-gb = Tool (GB)
             fr = Outil
         [band_the_doors]
             en = The Doors
