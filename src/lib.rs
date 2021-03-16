@@ -214,7 +214,6 @@ impl fmt::Display for TwineFormatter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut f = CodeFormatter::new(f, "    ");
         let mut all_languages = HashSet::new();
-        let mut all_regions = HashSet::new();
 
         write!(
             f,
@@ -226,7 +225,7 @@ impl fmt::Display for TwineFormatter {
         f.indent(1);
 
         let mut sorted: Vec<_> = self.map.iter().collect();
-        sorted.sort_by(|(a_key, _), (b_key, _)| a_key.cmp(b_key));
+        sorted.sort_unstable_by(|(a_key, _), (b_key, _)| a_key.cmp(b_key));
 
         for (key, translations) in sorted {
             let key = Self::normalize_key(key.as_str());
@@ -240,7 +239,7 @@ impl fmt::Display for TwineFormatter {
             )?;
             f.indent(2);
 
-            self.generate_match_arms(&mut f, translations, &mut all_languages, &mut all_regions)?;
+            self.generate_match_arms(&mut f, translations, &mut all_languages)?;
 
             f.dedent(2);
             write!(
@@ -271,10 +270,14 @@ impl fmt::Display for TwineFormatter {
         )?;
         f.indent(1);
 
-        let mut all_languages: Vec<_> = all_languages.iter().collect();
-        all_languages.sort_by(|a, b| a.cmp(b));
+        let lang_variants: HashSet<_> = all_languages
+            .iter()
+            .map(|(lang, _)| lang.as_str())
+            .collect();
+        let mut lang_variants: Vec<_> = lang_variants.into_iter().collect();
+        lang_variants.sort_unstable();
 
-        for lang in all_languages.iter() {
+        for lang in lang_variants.iter() {
             write!(
                 f,
                 r#"
@@ -289,14 +292,46 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
             }}
+
+            impl Lang {{
+                pub fn all_languages() -> &'static [&'static Lang] {{
+                    &[
+            "#,
+        )?;
+        f.indent(3);
+
+        let mut sorted_languages: Vec<_> = all_languages.iter().collect();
+        sorted_languages.sort_unstable();
+
+        for (lang, region) in sorted_languages {
+            write!(
+                f,
+                r#"
+                &Lang::{}({:?}),
+                "#,
+                lang,
+                region.as_deref().unwrap_or(""),
+            )?;
+        }
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+                    ]
+                }}
+            }}
             "#,
         )?;
 
         #[cfg(feature = "serde")]
         {
-            let mut all_regions: Vec<_> = all_regions.iter().collect();
-            all_regions.sort_by(|a, b| a.cmp(b));
-            Self::generate_serde(&mut f, &all_languages, &all_regions)?;
+            let mut all_regions: Vec<_> = all_languages
+                .iter()
+                .filter_map(|(_, region)| region.as_deref())
+                .collect();
+            all_regions.sort_unstable_by(|a, b| a.cmp(b).reverse());
+            Self::generate_serde(&mut f, &lang_variants, &all_regions)?;
         }
 
         Ok(())
@@ -308,9 +343,8 @@ impl TwineFormatter {
     fn generate_match_arms(
         &self,
         f: &mut CodeFormatter<fmt::Formatter>,
-        translations: &Vec<(String, String)>,
-        all_languages: &mut HashSet<String>,
-        all_regions: &mut HashSet<String>,
+        translations: &[(String, String)],
+        all_languages: &mut HashSet<(String, Option<String>)>,
     ) -> fmt::Result {
         let mut match_arms = Vec::new();
         let mut default_out = None;
@@ -353,10 +387,7 @@ impl TwineFormatter {
                 .as_str()
                 .to_camel_case();
             let region = caps.get(3);
-            all_languages.insert(lang.clone());
-            if let Some(region) = region {
-                all_regions.insert(region.as_str().to_string());
-            }
+            all_languages.insert((lang.clone(), region.map(|x| x.as_str().to_string())));
             match_arms.push((lang, region.map(|x| format!("{:?}", x.as_str())), out));
         }
         match_arms.sort_unstable_by(|(a_lang, a_region, _), (b_lang, b_region, _)| {
@@ -398,8 +429,8 @@ impl TwineFormatter {
     #[cfg(feature = "serde")]
     fn generate_serde(
         f: &mut CodeFormatter<fmt::Formatter>,
-        all_languages: &Vec<&String>,
-        all_regions: &Vec<&String>,
+        all_languages: &[&str],
+        all_regions: &[&str],
     ) -> fmt::Result {
         write!(
             f,
