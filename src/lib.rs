@@ -225,7 +225,7 @@ impl fmt::Display for TwineFormatter {
         f.indent(1);
 
         let mut sorted: Vec<_> = self.map.iter().collect();
-        sorted.sort_by(|(a_key, _), (b_key, _)| a_key.cmp(b_key));
+        sorted.sort_unstable_by(|(a_key, _), (b_key, _)| a_key.cmp(b_key));
 
         for (key, translations) in sorted {
             let key = Self::normalize_key(key.as_str());
@@ -275,7 +275,7 @@ impl fmt::Display for TwineFormatter {
             .map(|(lang, _)| lang.as_str())
             .collect();
         let mut lang_variants: Vec<_> = lang_variants.into_iter().collect();
-        lang_variants.sort();
+        lang_variants.sort_unstable();
 
         for lang in lang_variants.iter() {
             write!(
@@ -301,7 +301,7 @@ impl fmt::Display for TwineFormatter {
         f.indent(3);
 
         let mut sorted_languages: Vec<_> = all_languages.iter().collect();
-        sorted_languages.sort();
+        sorted_languages.sort_unstable();
 
         for (lang, region) in sorted_languages {
             write!(
@@ -330,7 +330,7 @@ impl fmt::Display for TwineFormatter {
                 .iter()
                 .filter_map(|(_, region)| region.as_deref())
                 .collect();
-            all_regions.sort_by(|a, b| a.cmp(b).reverse());
+            all_regions.sort_unstable_by(|a, b| a.cmp(b).reverse());
             Self::generate_serde(&mut f, &lang_variants, &all_regions)?;
         }
 
