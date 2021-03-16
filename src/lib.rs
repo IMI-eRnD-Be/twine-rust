@@ -275,7 +275,7 @@ impl fmt::Display for TwineFormatter {
             .map(|(lang, _)| lang.as_str())
             .collect();
         let mut lang_variants: Vec<_> = lang_variants.into_iter().collect();
-        lang_variants.sort_by(|a, b| a.cmp(b));
+        lang_variants.sort();
 
         for lang in lang_variants.iter() {
             write!(
@@ -301,7 +301,7 @@ impl fmt::Display for TwineFormatter {
         f.indent(3);
 
         let mut sorted_languages: Vec<_> = all_languages.iter().collect();
-        sorted_languages.sort_by(|a, b| a.cmp(b));
+        sorted_languages.sort();
 
         for (lang, region) in sorted_languages {
             write!(
