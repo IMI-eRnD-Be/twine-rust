@@ -219,6 +219,16 @@ impl fmt::Display for TwineFormatter {
         write!(
             f,
             r#"
+
+            "#,
+        )?;
+
+        write!(
+            f,
+            r#"
+            // i18n.rs
+            // (generated as procedural macro)
+            //
             #[macro_export]
             macro_rules! t {{
             "#,
@@ -264,7 +274,8 @@ impl fmt::Display for TwineFormatter {
         write!(
             f,
             r#"
-            #[derive(Debug, Clone, Copy, PartialEq, Hash)]
+
+            #[derive(Clone, Copy, Hash, Debug, PartialEq)]
             #[allow(dead_code)]
             pub enum Lang {{
             "#,
@@ -321,6 +332,37 @@ impl fmt::Display for TwineFormatter {
             r#"
                     ]
                 }}
+            }}
+            "#,
+        )?;
+
+        // implent default for `Lang`
+        write!(
+            f,
+            r#"
+
+            impl Default for Lang {{
+            "#,
+        )?;
+        f.indent(1);
+
+        let mut sorted_languages: Vec<_> = all_languages.iter().collect();
+        sorted_languages.sort_unstable();
+
+        let (default_lang, default_region) = sorted_languages[1];
+        write!(
+            f,
+            r#"
+            fn default() -> Self {{ Lang::{}({:?}) }}
+            "#,
+            default_lang,
+            default_region.as_deref().unwrap_or(""),
+        )?;
+        f.dedent(1);
+
+        write!(
+            f,
+            r#"
             }}
             "#,
         )?;
@@ -450,7 +492,7 @@ impl TwineFormatter {
                     impl<'de> de::Visitor<'de> for LangVisitor {{
                         type Value = Lang;
 
-                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {{
+                        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {{
                             formatter.write_str("expected string")
                         }}
 
