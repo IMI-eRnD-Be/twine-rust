@@ -21,7 +21,12 @@
 //! }
 //! ```
 //!
-//! 3.  You need an INI file with your translations. Example with `translations.ini`:
+//! 3.  You need an INI file with your translations.
+//!     Language translations are matched by `two lowercase letter` code (eg: `en`).
+//!     Localized language translations are identified by `two lowercase letter` code,
+//!     plus `hyphen`, plus `to letter localization` code (eg: `en-gb`).
+//!
+//!     The next paragraph is an example `translations.ini` file:
 //!
 //! ```text
 //! [app_ruin_the_band]
@@ -337,6 +342,7 @@ impl fmt::Display for TwineFormatter {
         )?;
 
         // implent default for `Lang`
+        // the fist in the sorted list should be fine
         write!(
             f,
             r#"
@@ -349,7 +355,7 @@ impl fmt::Display for TwineFormatter {
         let mut sorted_languages: Vec<_> = all_languages.iter().collect();
         sorted_languages.sort_unstable();
 
-        let (default_lang, default_region) = sorted_languages[1];
+        let (default_lang, default_region) = sorted_languages[0];
         write!(
             f,
             r#"

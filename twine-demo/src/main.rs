@@ -37,13 +37,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // localized feedback
         let time_start = SystemTime::now();
-        trace!(target: "twine-test", state = ?state,
+        trace!(target: "twine-demo", state = ?state,
                res = ? res, time = ?time_start);
 
         let mut import_path = concat!(env!("OUT_DIR"), "/i18n.rs").to_string();
         match twine_import::import(&mut import_path, &lang) {
             Ok(duration) => {
-                trace!(target: "twine-test",  import_path = ?import_path,
+                trace!(target: "twine-demo",  import_path = ?import_path,
                        duration = ?&duration);
             }
             Err(err) => {
@@ -58,8 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // localized feedback
         let time_end = SystemTime::now();
         let duration = time_end.duration_since(time_start);
-        trace!(target: "twine-test", process = ?res, state = ?state, duration = ?duration);
-
+        trace!(target: "twine-demo", process = ?res, state = ?state, duration = ?duration);
     });
 
     Ok(())

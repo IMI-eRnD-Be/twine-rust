@@ -31,4 +31,6 @@ criterion = "0.3"
 tempfile = "3"
 
 [workspace]
-members = ["twine-test"]
+members = [
+    "twine-demo",
+]

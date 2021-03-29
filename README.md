@@ -22,7 +22,12 @@ fn main() {
 }
 ```
 
-3.  You need an INI file with your translations. Example with `translations.ini`:
+3.  You need an INI file with your translations.
+    Language translations are matched by `two lowercase letter` code (eg: `en`).
+    Localized language translations are identified by `two lowercase letter` code,
+    plus `hyphen`, plus `to letter localization` code (eg: `en-gb`).
+
+    The next paragraph is an example `translations.ini` file:
 
 ```
 [app_ruin_the_band]

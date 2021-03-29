@@ -1,14 +1,14 @@
-use std::{error::Error,
-          process::Command,
-          time::{Duration, SystemTime},
+use std::{
+    error::Error,
+    process::Command,
+    time::{Duration, SystemTime},
 };
 use tracing::trace;
 
 use crate::Lang;
 
 /// test import
-pub fn import(p: &mut String, lang: &Lang)
-              -> Result<Duration, Box<dyn Error>> {
+pub fn import(p: &mut String, lang: &Lang) -> Result<Duration, Box<dyn Error>> {
     use std::path::Path;
 
     let mut res = t!(import_started => lang);
@@ -26,7 +26,8 @@ pub fn import(p: &mut String, lang: &Lang)
     let _result = child.wait().unwrap();
 
     let mut time_end = SystemTime::now();
-    let duration  = time_end.duration_since(time_start)
+    let duration = time_end
+        .duration_since(time_start)
         .expect("Clock may have gone backwards");
     trace!(target: "import", duration = ?duration);
 
