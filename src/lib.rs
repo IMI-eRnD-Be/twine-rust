@@ -5,7 +5,8 @@
 //! [![LOC](https://tokei.rs/b1/github/IMI-eRnD-Be/twine)](https://github.com/IMI-eRnD-Be/twine)
 //! [![Dependency Status](https://deps.rs/repo/github/IMI-eRnD-Be/twine/status.svg)](https://deps.rs/repo/github/IMI-eRnD-Be/twine)
 //!
-//! Library for internationalization using the Twine file format.
+//! Library for internationalization using the [Twine](https://github.com/scelis/twine) file
+//! format.
 //!
 //! # Usage
 //!
