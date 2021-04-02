@@ -10,9 +10,9 @@
 //!
 //! # Usage
 //!
-//! You first need to add twine to your `[build-dependencies]` in `Cargo.toml`.
+//! 1.  You need to add twine to your `[build-dependencies]` in `Cargo.toml`.
 //!
-//! Create (or edit) your `build.rs` file:
+//! 2.  Create (or edit) your `build.rs` file:
 //!
 //! ```no_run
 //! fn main() {
@@ -21,7 +21,7 @@
 //! }
 //! ```
 //!
-//! You need an INI file with your translations. Example with `translations.ini`:
+//! 3.  You need an INI file with your translations. Example with `translations.ini`:
 //!
 //! ```text
 //! [app_ruin_the_band]
@@ -51,7 +51,7 @@
 //!     fr = %#X
 //! ```
 //!
-//! Now in your project you can use the macro `t!` to translate anything:
+//! 4.  Now in your project you can use the macro `t!` to translate anything:
 //!
 //! ```ignore
 //! # enum Lang { Fr(&'static str) }

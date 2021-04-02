@@ -11,9 +11,9 @@ format.
 
 ## Usage
 
-You first need to add twine to your `[build-dependencies]` in `Cargo.toml`.
+1.  You need to add twine to your `[build-dependencies]` in `Cargo.toml`.
 
-Create (or edit) your `build.rs` file:
+2.  Create (or edit) your `build.rs` file:
 
 ```rust
 fn main() {
@@ -22,7 +22,7 @@ fn main() {
 }
 ```
 
-You need an INI file with your translations. Example with `translations.ini`:
+3.  You need an INI file with your translations. Example with `translations.ini`:
 
 ```
 [app_ruin_the_band]
@@ -52,7 +52,7 @@ You need an INI file with your translations. Example with `translations.ini`:
     fr = %#X
 ```
 
-Now in your project you can use the macro `t!` to translate anything:
+4.  Now in your project you can use the macro `t!` to translate anything:
 
 ```rust
 // you need to include the generated file somewhere
