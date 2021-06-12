@@ -1,2 +1,2 @@
-/// test import service
-pub mod twine_import;
+/// json import service
+pub mod json_import;

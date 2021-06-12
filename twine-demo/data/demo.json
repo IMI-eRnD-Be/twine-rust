@@ -1,0 +1,59 @@
+{
+    "_comment1": "The colour structure is an array of colour elements",
+    "colour": [
+	{
+	    "colour_name": "black",
+	    "category": "hue",
+	    "colour_type": "Primary",
+	    "code": {
+		"rgba": [255,255,255,1],
+		"hex": "000"
+	    }
+	},
+	{
+	    "colour_name": "white",
+	    "category": "value",
+	    "colour_type": "Primary",
+	    "code": {
+		"rgba": [0,0,0,1],
+		"hex": "FFF"
+	    }
+	},
+	{
+	    "colour_name": "red",
+	    "category": "hue",
+	    "colour_type": "Primary",
+	    "code": {
+		"rgba": [255,0,0,1],
+		"hex": "FF0"
+	    }
+	},
+	{
+	    "colour_name": "blue",
+	    "category": "hue",
+	    "colour_type": "Primary",
+	    "code": {
+		"rgba": [0,0,255,1],
+		"hex": "00F"
+	    }
+	},
+	{
+	    "colour_name": "yellow",
+	    "category": "hue",
+	    "colour_type": "Primary",
+	    "code": {
+		"rgba": [255,255,0,1],
+		"hex": "FF0"
+	    }
+	},
+	{
+	    "colour_name": "green",
+	    "category": "hue",
+	    "colour_type": "Secondary",
+	    "code": {
+		"rgba": [0,255,0,1],
+		"hex": "0F0"
+	    }
+	}
+    ]
+}
