@@ -29,3 +29,8 @@ regex = "1"
 [dev-dependencies]
 criterion = "0.3"
 tempfile = "3"
+
+[workspace]
+members = [
+    "twine-demo",
+]
