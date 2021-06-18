@@ -59,7 +59,9 @@
 //! 4.  Now in your project you can use the macro `t!` to translate anything:
 //!
 //! ```ignore
+//! # /// define valid language varients
 //! # enum Lang { Fr(&'static str) }
+//! # /// desugar the procedural macro call
 //! # macro_rules! t {
 //! # ($($tokens:tt)+) => {{
 //! # }};
@@ -232,8 +234,8 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
             // i18n.rs
-            // (generated as procedural macro)
-            //
+
+            /// Create translation strings for supported language varients.
             #[macro_export]
             macro_rules! t {{
             "#,
@@ -280,6 +282,7 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
 
+            /// Valid language variants.
             #[derive(Clone, Copy, Hash, Debug, PartialEq)]
             #[allow(dead_code)]
             pub enum Lang {{
@@ -298,9 +301,10 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
+                /// variant {}
                 {}(&'static str),
                 "#,
-                lang,
+                lang, lang
             )?;
         }
 
@@ -311,6 +315,7 @@ impl fmt::Display for TwineFormatter {
             }}
 
             impl Lang {{
+                /// Array with known language identifier.
                 pub fn all_languages() -> &'static [&'static Lang] {{
                     &[
             "#,
