@@ -22,7 +22,7 @@ harness = false
 
 [dependencies]
 indenter = { version = "0.3", features = ["std"] }
-heck = "0.3"
+heck = "0.4"
 once_cell = "1"
 regex = "1"
 

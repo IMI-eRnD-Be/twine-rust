@@ -70,6 +70,15 @@ fn main() {
 }
 ```
 
+5.  Disable incorrect compiler lint `macro_expanded_macro_exports_accessed_by_absolute_paths`:
+
+This rustc lint does not work properly and often gives a false positive. You can disable it at
+the crate level by adding this at the beginning of your `lib.rs` or `main.rs`:
+
+```rust
+#![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+```
+
 ## Implementation Notes
 
 All translation keys must have all the languages of all the keys. For example, if all your keys
