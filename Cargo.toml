@@ -24,7 +24,7 @@ harness = false
 indenter = { version = "0.3", features = ["std"] }
 heck = "0.4"
 once_cell = "1"
-regex = "1.5.5"
+regex = "1"
 
 [dev-dependencies]
 criterion = "0.3"
