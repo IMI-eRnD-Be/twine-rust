@@ -1,9 +1,13 @@
 Changelog
 =========
 
+## v0.3.12
+
+- Fix missing result handling
+
 ## v0.3.11
 
-- Add methods language() and region() to Lang
+- Add methods language() and region() to Lang (#11)
 
 ## v0.3.10
 
