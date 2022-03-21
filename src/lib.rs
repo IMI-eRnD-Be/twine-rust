@@ -341,7 +341,7 @@ impl fmt::Display for TwineFormatter {
             r#"
             impl std::fmt::Display for Lang {{
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
-                    write!(f, "{{}}", self.language());
+                    write!(f, "{{}}", self.language())?;
                     let region = self.region();
                     if !region.is_empty() {{
                         write!(f, "_{{}}", region)?;
