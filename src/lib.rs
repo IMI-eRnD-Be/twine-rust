@@ -374,6 +374,61 @@ impl fmt::Display for TwineFormatter {
             "#,
         )?;
 
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+            impl Lang {{
+                fn language(&self) -> &'static str {{
+                    match self {{
+            "#,
+        )?;
+
+        f.indent(3);
+        for lang in &lang_variants {
+            write!(
+                f,
+                r#"
+                &Lang::{}(_) => {:?},
+                "#,
+                lang,
+                lang.to_snake_case(),
+            )?;
+        }
+
+        f.dedent(2);
+        write!(
+            f,
+            r#"
+                    }}
+                }}
+
+                fn region(&self) -> &str {{
+                    match self {{
+            "#,
+        )?;
+
+        f.indent(2);
+        for lang in &lang_variants {
+            write!(
+                f,
+                r#"
+                &Lang::{}(region) => region,
+                "#,
+                lang,
+            )?;
+        }
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+                    }}
+                }}
+            }}
+            "#,
+        )?;
+
         #[cfg(feature = "serde")]
         {
             let mut all_regions: Vec<_> = all_languages
