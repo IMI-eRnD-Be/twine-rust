@@ -24,4 +24,9 @@ pub fn serde() {
     assert_eq!(serde_json::to_string(&lang).unwrap(), "\"en\"");
     let lang: Lang = serde_json::from_str("\"fr\"").unwrap();
     assert_eq!(serde_json::to_string(&lang).unwrap(), "\"fr\"");
+
+    let lang = Lang::En("gb");
+    assert_eq!(lang.to_string(), "en_gb");
+    let lang = Lang::En("");
+    assert_eq!(lang.to_string(), "en");
 }

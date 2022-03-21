@@ -74,6 +74,15 @@
 //! }
 //! ```
 //!
+//! 5.  Disable incorrect compiler lint `macro_expanded_macro_exports_accessed_by_absolute_paths`:
+//!
+//! This rustc lint does not work properly and often gives a false positive. You can disable it at
+//! the crate level by adding this at the beginning of your `lib.rs` or `main.rs`:
+//!
+//! ```
+//! #![allow(macro_expanded_macro_exports_accessed_by_absolute_paths)]
+//! ```
+//!
 //! # Implementation Notes
 //!
 //! All translation keys must have all the languages of all the keys. For example, if all your keys
@@ -95,7 +104,7 @@
 //! This work is dual-licensed under Apache 2.0 and MIT.
 //! You can choose between one of them if you use this work.
 
-use heck::{CamelCase, SnakeCase};
+use heck::{ToSnakeCase, ToUpperCamelCase};
 use indenter::CodeFormatter;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -234,6 +243,7 @@ impl fmt::Display for TwineFormatter {
                 f,
                 r#"
                 ({} $(, $fmt_args:expr)* => $lang:expr) => {{{{
+                    #[allow(unreachable_patterns)]
                     match $lang {{
                 "#,
                 key,
@@ -386,7 +396,7 @@ impl TwineFormatter {
                 .get(1)
                 .expect("the language is always there")
                 .as_str()
-                .to_camel_case();
+                .to_upper_camel_case();
             let region = caps.get(3);
             all_languages.insert((lang.clone(), region.map(|x| x.as_str().to_string())));
             match_arms.push((lang, region.map(|x| format!("{:?}", x.as_str())), out));
@@ -553,6 +563,13 @@ impl TwineFormatter {
             f,
             r#"
                     }}
+                }}
+            }}
+
+            impl std::fmt::Display for Lang {{
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+                    use serde::Serialize;
+                    self.serialize(f)
                 }}
             }}
             "#,
