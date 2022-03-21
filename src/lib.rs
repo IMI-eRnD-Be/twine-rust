@@ -473,7 +473,7 @@ impl TwineFormatter {
 
     // turns all the keys into snake case automatically
     fn normalize_key(key: &str) -> String {
-        key.to_snake_case().replace(".", "__")
+        key.to_snake_case().replace('.', "__")
     }
 
     #[cfg(feature = "serde")]
