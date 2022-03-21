@@ -31,4 +31,23 @@ fn ui() {
     eprintln!("stderr:\n{}\n", stderr);
     assert!(output.status.success());
     assert_eq!(stdout.trim(), EXPECTED_OUTPUT.trim());
+
+    let output = std::process::Command::new("cargo")
+        .args(&[
+            "clippy",
+            "--manifest-path",
+            "tests/test-crate/Cargo.toml",
+            "--tests",
+            "--",
+            "-D",
+            "warnings",
+        ])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    println!("stdout:\n{}\n", stdout);
+    eprintln!("stderr:\n{}\n", stderr);
+    assert!(output.status.success());
 }

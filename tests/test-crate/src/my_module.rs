@@ -2,7 +2,7 @@ use crate::t;
 use crate::Lang;
 
 pub fn basic() {
-    for lang in vec![Lang::Fr(""), Lang::En(""), Lang::En("gb")] {
+    for lang in &[Lang::Fr(""), Lang::En(""), Lang::En("gb")] {
         println!("{}", t!(app_ruin_the_band => lang));
         println!("{}", t!(band_rage_against_the_machine => lang));
         println!("{}", t!(format_string, "Hello", "World" => lang));

@@ -367,7 +367,7 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                &Lang::{}(_) => {:?},
+                Lang::{}(_) => {:?},
                 "#,
                 lang,
                 lang.to_snake_case(),
@@ -391,7 +391,7 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                &Lang::{}(region) => region,
+                Lang::{}(region) => region,
                 "#,
                 lang,
             )?;

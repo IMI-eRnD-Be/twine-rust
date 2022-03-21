@@ -1,6 +1,10 @@
 Changelog
 =========
 
+## v0.3.13
+
+- Fix clippy lint on generated code & add test
+
 ## v0.3.12
 
 - Fix missing result handling
