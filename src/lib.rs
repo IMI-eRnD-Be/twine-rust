@@ -341,7 +341,24 @@ impl fmt::Display for TwineFormatter {
             r#"
             impl std::fmt::Display for Lang {{
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
-                    let region = match self {{
+                    write!(f, "{{}}", self.language());
+                    let region = self.region();
+                    if !region.is_empty() {{
+                        write!(f, "_{{}}", region)?;
+                    }}
+                    Ok(())
+                }}
+            }}
+            "#,
+        )?;
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+            impl Lang {{
+                fn language(&self) -> &'static str {{
+                    match self {{
             "#,
         )?;
 
@@ -350,13 +367,33 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                &Lang::{}(region) => {{
-                    write!(f, {:?})?;
-                    region
-                }}
+                &Lang::{}(_) => {:?},
                 "#,
                 lang,
                 lang.to_snake_case(),
+            )?;
+        }
+
+        f.dedent(2);
+        write!(
+            f,
+            r#"
+                    }}
+                }}
+
+                fn region(&self) -> &str {{
+                    match self {{
+            "#,
+        )?;
+
+        f.indent(2);
+        for lang in &lang_variants {
+            write!(
+                f,
+                r#"
+                &Lang::{}(region) => region,
+                "#,
+                lang,
             )?;
         }
 
@@ -364,11 +401,7 @@ impl fmt::Display for TwineFormatter {
         write!(
             f,
             r#"
-                    }};
-                    if !region.is_empty() {{
-                        write!(f, "_{{}}", region)?;
                     }}
-                    Ok(())
                 }}
             }}
             "#,

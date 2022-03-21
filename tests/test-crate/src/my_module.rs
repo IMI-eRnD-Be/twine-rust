@@ -18,8 +18,12 @@ pub fn basic() {
 
     let lang = Lang::En("gb");
     assert_eq!(lang.to_string(), "en_gb");
+    assert_eq!(lang.language(), "en");
+    assert_eq!(lang.region(), "gb");
     let lang = Lang::En("");
     assert_eq!(lang.to_string(), "en");
+    assert_eq!(lang.language(), "en");
+    assert_eq!(lang.region(), "");
 }
 
 pub fn serde() {
