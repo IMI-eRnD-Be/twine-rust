@@ -568,8 +568,7 @@ impl TwineFormatter {
 
             impl std::fmt::Display for Lang {{
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
-                    use serde::Serialize;
-                    self.serialize(f)
+                    serde::Serialize::serialize(self, f)
                 }}
             }}
             "#,
