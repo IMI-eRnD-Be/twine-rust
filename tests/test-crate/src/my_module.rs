@@ -9,6 +9,7 @@ pub fn basic() {
         println!("{}", t!(format_percentage, 73.02f32 => lang));
         println!("{}", t!(format_hexadecimal, 0xBAD_CAFE => lang));
         println!("{}", t!(fallback_to_default_lang => lang));
+        println!("{}", t!(name_with_dot_in_it => lang));
     }
 
     assert_eq!(

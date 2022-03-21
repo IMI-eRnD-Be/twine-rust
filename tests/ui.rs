@@ -5,18 +5,21 @@ Hello, World !
 73 %
 0xBADCAFE
 Hello
+Name with a dot
 Ruin a band name by translating it in French
 Rage Against the Machine
 Hello, World!
 73%
 badcafe
 Hello
+Name with a dot
 Ruin a band name by translating it in French
 Wrath Against the Machine
 Hello, World!
 % 73 % foo
 badcafe
-Hello";
+Hello
+Name with a dot";
 
 #[test]
 fn ui() {

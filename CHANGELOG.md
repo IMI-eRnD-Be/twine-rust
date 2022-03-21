@@ -5,18 +5,30 @@ Changelog
 
 - Fix clippy lint on generated code & add test
 
+Yanked: compatibility broken because the character `.` is not converted the
+same way after updating heck to 0.4.
+
 ## v0.3.12
 
 - Fix missing result handling
+
+Yanked: compatibility broken because the character `.` is not converted the
+same way after updating heck to 0.4.
 
 ## v0.3.11
 
 - Add methods language() and region() to Lang (#11)
 
+Yanked: compatibility broken because the character `.` is not converted the
+same way after updating heck to 0.4.
+
 ## v0.3.10
 
 - Add CHANGELOG.md
 - Implement Display for Lang (#9 and #10)
+
+Yanked: compatibility broken because the character `.` is not converted the
+same way after updating heck to 0.4.
 
 ## v0.3.9
 
