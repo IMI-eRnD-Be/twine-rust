@@ -3,7 +3,7 @@ Changelog
 
 ## v0.3.11
 
-- Add method language() and region() to Lang
+- Add methods language() and region() to Lang
 
 ## v0.3.10
 
