@@ -314,7 +314,7 @@ impl fmt::Display for TwineFormatter {
         let mut sorted_languages: Vec<_> = all_languages.iter().collect();
         sorted_languages.sort_unstable();
 
-        for (lang, region) in sorted_languages {
+        for (lang, region) in &sorted_languages {
             write!(
                 f,
                 r#"
@@ -330,6 +330,45 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
                     ]
+                }}
+            }}
+            "#,
+        )?;
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+            impl std::fmt::Display for Lang {{
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+                    let region = match self {{
+            "#,
+        )?;
+
+        f.indent(3);
+        for lang in &lang_variants {
+            write!(
+                f,
+                r#"
+                &Lang::{}(region) => {{
+                    write!(f, {:?})?;
+                    region
+                }}
+                "#,
+                lang,
+                lang.to_snake_case(),
+            )?;
+        }
+
+        f.dedent(3);
+        write!(
+            f,
+            r#"
+                    }};
+                    if !region.is_empty() {{
+                        write!(f, "_{{}}", region)?;
+                    }}
+                    Ok(())
                 }}
             }}
             "#,
@@ -563,12 +602,6 @@ impl TwineFormatter {
             f,
             r#"
                     }}
-                }}
-            }}
-
-            impl std::fmt::Display for Lang {{
-                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
-                    serde::Serialize::serialize(self, f)
                 }}
             }}
             "#,
