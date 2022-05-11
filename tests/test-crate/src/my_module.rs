@@ -10,6 +10,7 @@ pub fn basic() {
         println!("{}", t!(format_hexadecimal, 0xBAD_CAFE => lang));
         println!("{}", t!(fallback_to_default_lang => lang));
         println!("{}", t!(name_with_dot_in_it => lang));
+        println!("{}", t!(stuff_with_escaped_sequences_and_double_quotes => lang));
     }
 
     assert_eq!(
