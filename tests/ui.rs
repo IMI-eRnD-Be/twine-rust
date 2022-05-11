@@ -6,6 +6,7 @@ Hello, World !
 0xBADCAFE
 Hello
 Name with a dot
+Stuff with\nescaped\tsequences and \"double quotes\"
 Ruin a band name by translating it in French
 Rage Against the Machine
 Hello, World!
@@ -13,13 +14,16 @@ Hello, World!
 badcafe
 Hello
 Name with a dot
+Stuff with\nescaped\tsequences and \"double quotes\"
 Ruin a band name by translating it in French
 Wrath Against the Machine
 Hello, World!
 % 73 % foo
 badcafe
 Hello
-Name with a dot";
+Name with a dot
+Stuff with\nescaped\tsequences and \"double quotes\"
+";
 
 #[test]
 fn ui() {
