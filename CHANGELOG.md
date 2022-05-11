@@ -1,6 +1,14 @@
 Changelog
 =========
 
+## v0.5.0
+
+- Do not escape already escaped codes with backslash (#12)
+
+## v0.4.0
+
+- Added test and include all changes from 0.3.10 to 0.3.13
+
 ## v0.3.13
 
 - Fix clippy lint on generated code & add test
