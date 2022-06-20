@@ -14,7 +14,7 @@ fn deterministic() {
     let out_dir = tempfile::tempdir().unwrap();
     std::env::set_var("OUT_DIR", out_dir.as_ref().as_os_str());
 
-    // The dataset is very small so it has chances to passes by luck
+    // The dataset is very small so it has chances to pass by luck
     for _ in 0..100 {
         twine::build_translations_from_str(&[translations], "a.rs").unwrap();
         let a = fs::read_to_string(out_dir.as_ref().join("a.rs")).unwrap();

@@ -118,8 +118,10 @@ use std::path::Path;
 
 // regex that tries to parse printf's format placeholders
 // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
-static RE_PRINTF: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|%%|%$|"|[^%"]+"#).unwrap());
+static RE_PRINTF: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|\\u([0-9a-fA-F]{4})|\\.|%%|%$|"|[^%"\\]+"#)
+        .unwrap()
+});
 static RE_LANG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\w+)(-(\w+))?").unwrap());
 static RE_SECTION: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\s*\[([^\]]+)\]").unwrap());
 static RE_KEY_VALUE: Lazy<Regex> =
@@ -455,6 +457,10 @@ impl TwineFormatter {
                     out.push_str("%");
                 } else if &caps[0] == "\"" {
                     out.push_str("\\\"");
+                } else if let Some(unicode) = caps.get(5) {
+                    out.push_str(r"\u{");
+                    out.push_str(unicode.as_str());
+                    out.push_str(r"}");
                 } else {
                     out.push_str(&caps[0]);
                 }
