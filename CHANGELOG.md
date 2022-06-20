@@ -1,6 +1,10 @@
 Changelog
 =========
 
+## v0.5.2
+
+- Handle printf 16-bit unicode (#13)
+
 ## v0.5.0
 
 - Do not escape already escaped codes with backslash (#12)
