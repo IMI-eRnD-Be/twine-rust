@@ -276,7 +276,7 @@ impl fmt::Display for TwineFormatter {
         write!(
             f,
             r#"
-            #[derive(Debug, Clone, Copy, PartialEq, Hash)]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
             #[allow(dead_code)]
             pub enum Lang {{
             "#,
