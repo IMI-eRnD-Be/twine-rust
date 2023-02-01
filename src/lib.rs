@@ -139,7 +139,7 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
         .map(|file_path| {
             let file_path = file_path.as_ref();
             println!("cargo:rerun-if-changed={}", file_path.display());
-            fs::File::open(&file_path)
+            fs::File::open(file_path)
         })
         .collect::<io::Result<Vec<_>>>()?;
 
@@ -244,11 +244,10 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                ({} $(, $fmt_args:expr)* => $lang:expr) => {{{{
+                ({key} $(, $fmt_args:expr)* => $lang:expr) => {{{{
                     #[allow(unreachable_patterns)]
                     match $lang {{
                 "#,
-                key,
             )?;
             f.indent(2);
 
@@ -294,9 +293,8 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                {}(&'static str),
+                {lang}(&'static str),
                 "#,
-                lang,
             )?;
         }
 
@@ -359,7 +357,7 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
             impl Lang {{
-                fn language(&self) -> &'static str {{
+                pub fn language(&self) -> &'static str {{
                     match self {{
             "#,
         )?;
@@ -383,7 +381,7 @@ impl fmt::Display for TwineFormatter {
                     }}
                 }}
 
-                fn region(&self) -> &str {{
+                pub fn region(&self) -> &str {{
                     match self {{
             "#,
         )?;
@@ -393,9 +391,8 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                Lang::{}(region) => region,
+                Lang::{lang}(region) => region,
                 "#,
-                lang,
             )?;
         }
 
@@ -503,9 +500,8 @@ impl TwineFormatter {
             write!(
                 f,
                 r#"
-                _ => format!("{}" $(, $fmt_args)*),
+                _ => format!("{default_out}" $(, $fmt_args)*),
                 "#,
-                default_out,
             )?;
         }
 
