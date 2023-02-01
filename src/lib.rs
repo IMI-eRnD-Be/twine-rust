@@ -359,7 +359,7 @@ impl fmt::Display for TwineFormatter {
             f,
             r#"
             impl Lang {{
-                fn language(&self) -> &'static str {{
+                pub fn language(&self) -> &'static str {{
                     match self {{
             "#,
         )?;
@@ -383,7 +383,7 @@ impl fmt::Display for TwineFormatter {
                     }}
                 }}
 
-                fn region(&self) -> &str {{
+                pub fn region(&self) -> &str {{
                     match self {{
             "#,
         )?;
