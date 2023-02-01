@@ -1,6 +1,14 @@
 Changelog
 =========
 
+## v0.6.0
+
+- Make methods region() and language() public (#15)
+
+## v0.5.3
+
+- Implement Eq for Lang (#14)
+
 ## v0.5.2
 
 - Handle printf 16-bit unicode (#13)
