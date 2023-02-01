@@ -139,7 +139,7 @@ pub fn build_translations<P: AsRef<Path>, O: AsRef<Path>>(
         .map(|file_path| {
             let file_path = file_path.as_ref();
             println!("cargo:rerun-if-changed={}", file_path.display());
-            fs::File::open(&file_path)
+            fs::File::open(file_path)
         })
         .collect::<io::Result<Vec<_>>>()?;
 
