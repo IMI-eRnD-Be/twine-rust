@@ -244,11 +244,10 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                ({} $(, $fmt_args:expr)* => $lang:expr) => {{{{
+                ({key} $(, $fmt_args:expr)* => $lang:expr) => {{{{
                     #[allow(unreachable_patterns)]
                     match $lang {{
                 "#,
-                key,
             )?;
             f.indent(2);
 
@@ -294,9 +293,8 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                {}(&'static str),
+                {lang}(&'static str),
                 "#,
-                lang,
             )?;
         }
 
@@ -393,9 +391,8 @@ impl fmt::Display for TwineFormatter {
             write!(
                 f,
                 r#"
-                Lang::{}(region) => region,
+                Lang::{lang}(region) => region,
                 "#,
-                lang,
             )?;
         }
 
@@ -503,9 +500,8 @@ impl TwineFormatter {
             write!(
                 f,
                 r#"
-                _ => format!("{}" $(, $fmt_args)*),
+                _ => format!("{default_out}" $(, $fmt_args)*),
                 "#,
-                default_out,
             )?;
         }
 
