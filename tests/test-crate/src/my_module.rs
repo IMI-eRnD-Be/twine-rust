@@ -11,6 +11,7 @@ pub fn basic() {
         println!("{}", t!(fallback_to_default_lang => lang));
         println!("{}", t!(name_with_dot_in_it => lang));
         println!("{}", t!(stuff_with_escaped_sequences_and_double_quotes => lang));
+        println!("{}", t!(format_parameter_posix_extension, 1, 2 => lang));
     }
 
     assert_eq!(

@@ -119,7 +119,7 @@ use std::path::Path;
 // regex that tries to parse printf's format placeholders
 // see: https://docs.microsoft.com/en-us/cpp/c-runtime-library/format-specification-syntax-printf-and-wprintf-functions?view=msvc-160
 static RE_PRINTF: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r#"%([-+#])?(\d+)?(\.\d+)?([dis@xXf])|\\u([0-9a-fA-F]{4})|\\.|%%|%$|"|[^%"\\]+"#)
+    Regex::new(r#"%((?P<parameter>\d+)\$)?(?P<flags>[-+#])?(?P<width>\d+)?(?P<precision>\.\d+)?(?P<type>[dis@xXf])|\\u(?P<unicode>[0-9a-fA-F]{4})|\\.|%%|%$|"|[^%"\\]+"#)
         .unwrap()
 });
 static RE_LANG: Lazy<Regex> = Lazy::new(|| Regex::new(r"(\w+)(-(\w+))?").unwrap());
@@ -434,15 +434,23 @@ impl TwineFormatter {
             // transform all printf's format placeholder to Rust's format
             let mut out = String::new();
             for caps in RE_PRINTF.captures_iter(text.as_str()) {
-                if let Some(type_) = caps.get(4) {
-                    out.push_str("{:");
-                    if let Some(flag) = caps.get(1) {
+                if let Some(type_) = caps.name("type") {
+                    out.push_str("{");
+                    if let Some(parameter) = caps.name("parameter") {
+                        let parameter: usize = parameter
+                            .as_str()
+                            .parse()
+                            .expect("could not parse parameter index");
+                        write!(out, "{}", parameter.saturating_sub(1))?;
+                    }
+                    out.push_str(":");
+                    if let Some(flag) = caps.name("flags") {
                         out.push_str(flag.as_str());
                     }
-                    if let Some(width) = caps.get(2) {
+                    if let Some(width) = caps.name("width") {
                         out.push_str(width.as_str());
                     }
-                    if let Some(precision) = caps.get(3) {
+                    if let Some(precision) = caps.name("precision") {
                         out.push_str(precision.as_str());
                     }
                     match type_.as_str() {
@@ -454,7 +462,7 @@ impl TwineFormatter {
                     out.push_str("%");
                 } else if &caps[0] == "\"" {
                     out.push_str("\\\"");
-                } else if let Some(unicode) = caps.get(5) {
+                } else if let Some(unicode) = caps.name("unicode") {
                     out.push_str(r"\u{");
                     out.push_str(unicode.as_str());
                     out.push_str(r"}");
