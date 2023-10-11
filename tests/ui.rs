@@ -7,6 +7,7 @@ Hello, World !
 Hello
 Name with a dot
 Stuff with\nescaped\tsequences and \"double quotes\"
+2    1
 Ruin a band name by translating it in French
 Rage Against the Machine
 Hello, World!
@@ -15,6 +16,7 @@ badcafe
 Hello
 Name with a dot
 Stuff with\nescaped\tsequences and \"double quotes\"
+1    2
 Ruin a band name by translating it in French
 Wrath Against the Machine
 Hello, World!
@@ -23,6 +25,7 @@ badcafe
 Hello
 Name with a dot
 Stuff with\nescaped\tsequences and \"double quotes\"
+1    2
 ";
 
 #[test]
