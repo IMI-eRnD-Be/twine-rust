@@ -541,6 +541,7 @@ impl TwineFormatter {
 
                     struct LangVisitor;
 
+                    #[allow(clippy::needless_lifetimes)]
                     impl<'de> de::Visitor<'de> for LangVisitor {{
                         type Value = Lang;
 
@@ -604,12 +605,10 @@ impl TwineFormatter {
         write!(
             f,
             r#"
-                                _ => {{
-                                    return Err(de::Error::invalid_value(
-                                        de::Unexpected::Str(region),
-                                        &"existing language",
-                                    ));
-                                }}
+                                _ => Err(de::Error::invalid_value(
+                                    de::Unexpected::Str(region),
+                                    &"existing language",
+                                )),
                             }}
                         }}
                     }}
@@ -632,7 +631,7 @@ impl TwineFormatter {
             write!(
                 f,
                 r#"
-                Lang::{variant}(region) if region.is_empty() => serializer.serialize_str({lang:?}),
+                Lang::{variant}("") => serializer.serialize_str({lang:?}),
                 Lang::{variant}(region) => serializer.serialize_str(
                     &format!("{{}}_{{}}", {lang:?}, region),
                 ),
