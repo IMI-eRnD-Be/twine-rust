@@ -604,12 +604,10 @@ impl TwineFormatter {
         write!(
             f,
             r#"
-                                _ => {{
-                                    return Err(de::Error::invalid_value(
-                                        de::Unexpected::Str(region),
-                                        &"existing language",
-                                    ));
-                                }}
+                                _ => Err(de::Error::invalid_value(
+                                    de::Unexpected::Str(region),
+                                    &"existing language",
+                                )),
                             }}
                         }}
                     }}
